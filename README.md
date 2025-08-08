@@ -72,6 +72,10 @@ curl 'https://api.edinet-fsa.go.jp/api/v2/documents.json?date=2023-08-28&type=2&
 curl -o document.zip 'https://api.edinet-fsa.go.jp/api/v2/documents/S100RR60?type=1&Subscription-Key=[your-api-key]'
 ```
 
+```
+PYTHONPATH=./ uv run app/path/to/[filename].py
+```
+
 ## 開発
 
 ### コード品質チェック
