@@ -7,6 +7,13 @@
 
 ## aws sso 初期設定
 ```shell
+
+% aws configure
+AWS Access Key ID [None]: 
+AWS Secret Access Key [None]: 
+Default region name [ap-northeast-1]: ap-northeast-1
+Default output format [None]: json
+
 % aws configure sso
 SSO session name (Recommended): [username]
 SSO start URL [None]: https://[see IAM Identity Center].awsapps.com/start

@@ -3,10 +3,12 @@ from dataclasses import dataclass
 
 import requests
 
-from backend.main.model.edinet.parameter import Parameter
-from backend.main.model.edinet.resultset import Resultset
+
 
 import json
+
+from db.model.edinet.parameter import Parameter
+from db.model.edinet.resultset import Resultset
 
 
 

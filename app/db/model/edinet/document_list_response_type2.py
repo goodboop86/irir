@@ -3,8 +3,10 @@ from typing import List
 
 import requests
 
-from backend.main.model.edinet.document_item import Results
-from backend.main.model.edinet.metadata import Metadata
+from db.model.edinet.document_item import Results
+from db.model.edinet.metadata import Metadata
+
+
 
 
 
