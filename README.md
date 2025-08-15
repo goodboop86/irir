@@ -37,6 +37,10 @@ IRIRは、金融庁のEDINET（Electronic Disclosure for Investors' NETwork）AP
    ```bash
    # 本体依存関係
    uv add streamlit
+   uv add fastapi --extra standard
+
+   # aws
+   uv add boto3
    
    # 開発用依存関係
    uv add --dev ruff
@@ -56,6 +60,9 @@ IRIRは、金融庁のEDINET（Electronic Disclosure for Investors' NETwork）AP
 ```bash
 # フロントエンドアプリケーションの起動
 uv run streamlit run app/frontend/main.py
+
+# バックエンド
+uv run uvicorn backend.main.main:app --reload
 ```
 
 ### EDINET API の直接利用
