@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 
@@ -33,3 +34,11 @@ class Results:
     englishDocFlag: str = None
     csvFlag: str = None
     legalStatus: str = None
+
+    def proprocess(self, yyyymmdd: str):
+        if not bool(self.ubmitDateTime):
+            self.ubmitDateTime = yyyymmdd
+
+
+    def submitDateTimeExists(self):
+        return bool(self.submitDateTime)

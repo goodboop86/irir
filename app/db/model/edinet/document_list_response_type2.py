@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import List
 
 import requests
@@ -18,9 +18,12 @@ class DocumentListResponseType2:
     results: List[Results]
 
     def __init__(self, metadata, results):
-        # import pdb;pdb.set_trace()
-        self.metadata = metadata
-        self.results = [Results(item) for item in results]
+        self.metadata = Metadata(**metadata)
+        self.results = [Results(**item) for item in results]
+
+    def create_result_items(self):
+        yyyymmdd = self.metadata.parameter.date
+        return [asdict(result.proprocess(yyyymmdd=yyyymmdd)) for result in self.results]
 
 
 if __name__ == "__main__":

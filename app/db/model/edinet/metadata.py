@@ -20,3 +20,11 @@ class Metadata:
     processDateTime: str  # YYYY-MM-DD hh:mm
     status: str
     message: str
+
+    def __init__(self, title: str, parameter: Parameter, resultset: Resultset, processDateTime: str, status: str, message: str):
+        self.title = title
+        self.parameter = Parameter(**parameter)
+        self.resultset = Resultset(**resultset)
+        self.processDateTime = processDateTime
+        self.status = status
+        self.message = message
