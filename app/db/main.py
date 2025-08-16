@@ -24,7 +24,7 @@ table = resource.Table(table_name)
 
 for item in items:
     pprint(item)
-    table.put_item(Item=item)
+    # table.put_item(Item=item)
 
 
 

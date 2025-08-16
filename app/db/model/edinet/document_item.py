@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
+from common.main.lib.utils import Utils
+from db.model.edinet.edinet_enums import DisclosureStatus, RegalStatus
+
 
 @dataclass
 class Results:
@@ -35,12 +38,32 @@ class Results:
     csvFlag: str = None
     legalStatus: str = None
 
+    def has_submitdatetime(self):
+        return bool(self.submitDateTime)
+    def has_pdf(self) -> bool:
+        return Utils.broad_enable(self.pdfFlag)
+    def has_csv(self) -> bool:
+        return Utils.broad_enable(self.csvFlag)
+    def has_xbrl(self) -> bool:
+        return Utils.broad_enable(self.xbrlFlag)
+    def has_attachdoc(self) -> bool:
+        return Utils.broad_enable(self.attachDocFlag)
+    def has_englishdoc(self) -> bool:
+        return Utils.broad_enable(self.englishDocFlag)
+    def get_regalstatus(self) -> RegalStatus:
+        return RegalStatus.from_string(self.legalStatus)
+    def get_disclosurestatus(self) -> RegalStatus:
+        return DisclosureStatus.from_string(self.legalStatus)
+
+
     def preprocess(self, yyyymmdd: str):
+        """DynamoDB登録用に整形して返す"""
+        self.__embed_date_if_not_exist(yyyymmdd=yyyymmdd)
+
+        return self
+    
+    def __embed_date_if_not_exist(self, yyyymmdd: str):
+        """submitDateTimeが存在しないなら、受け取った日付(APIリクエスト日を想定)を埋めて返す"""
         if not bool(self.submitDateTime):
             self.submitDateTime = yyyymmdd
 
-        return self
-
-
-    def submitDateTimeExists(self):
-        return bool(self.submitDateTime)

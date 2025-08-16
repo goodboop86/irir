@@ -1,5 +1,41 @@
 from enum import Enum
 
+
+class RegalStatus(Enum):
+    """
+    縦覧ステータスを表すEnumクラス。
+    """
+    ON_VIEW = "1"      # 縦覧中
+    EXTENDED = "2"     # 延長期間中
+    EXPIRED = "0"      # 閲覧期間満了
+
+    @staticmethod
+    def from_string(value: str):
+        for status in RegalStatus:
+            if status.value == value:
+                return status
+        # 見つからなかった場合は例外を発生させる
+        raise ValueError(f"'{value}' is not a valid RegalStatus value.")
+
+
+class DisclosureStatus(Enum):
+    """
+    EDINET書類の開示ステータスを表すEnumクラス。
+    """
+    NOT_DISCLOSED_BY_STAFF = "1"  # 財務局職員によって書類の不開示を開始した情報
+    NOT_DISCLOSED = "2"           # 不開示とされている書類
+    DISCLOSURE_CANCELED = "3"     # 財務局職員によって書類の不開示を解除した情報
+    OTHER = "0"                   # それ以外
+
+    @staticmethod
+    def from_string(value: str):
+        for status in RegalStatus:
+            if status.value == value:
+                return status
+        # 見つからなかった場合は例外を発生させる
+        raise ValueError(f"'{value}' is not a valid RegalStatus value.")
+
+
 class PrefecturalOrdinanceCode(Enum):
     """
     内閣府令コード
