@@ -4,48 +4,40 @@ import boto3
 
 from db.model.edinet.document_list_response_type2 import DocumentListResponseType2
 from db.strategy.strategy import (
+    CreateAwsSession,
     GetApiKeyFromAws,
     GetDocumentListFromEdiNetApi,
     GetItemsFromDocumentListReaponse,
+    InsertItemsToDynamoDb,
 )
 
 
 # with open("app/common/main/resources/document_list_response_type2.json") as f:
 #     resp = json.loads(f.read())
 
-# doclist = DocumentListResponseType2(**resp)
-# items = doclist.create_result_items()
-
-
-# session = boto3.Session(profile_name="gb86sub")
-# resource = session.resource("dynamodb")
-
-# table_name = "edinet-document_list-api"
-# # describe = resource.describe_table(TableName=table_name)
-# # pprint(describe)
-
-# table = resource.Table(table_name)
-
-# for item in items:
-#     pprint(item)
-#     # table.put_item(Item=item)
-
 
 def run():
-    get_apikey = GetApiKeyFromAws(
+
+    session = CreateAwsSession(profile_name="gb86sub").execute()
+
+    apikey = GetApiKeyFromAws(
+        session=session,
         secret_name="EdinetApiKey",
         key_name="EDINET_API_KEY",
         region_name="ap-northeast-1",
-    )
+    ).execute()
 
-    get_documentlist = GetDocumentListFromEdiNetApi(
-        type="2", api_key=get_apikey.execute(), yyyymmdd="2023-08-28"
-    )
+    documentlist = GetDocumentListFromEdiNetApi(
+        type="2", api_key=apikey, yyyymmdd="2023-08-28"
+    ).execute()
 
-    get_items = GetItemsFromDocumentListReaponse(
-        document_list_response=get_documentlist.execute()
-    )
-    pprint(get_items.execute())
+    items = GetItemsFromDocumentListReaponse(
+        document_list_response=documentlist
+    ).execute()
+
+    InsertItemsToDynamoDb(session=session, items=items, target_table="edinet-document_list-api")
+
+    pprint(items)
 
 
 if __name__ == "__main__":
