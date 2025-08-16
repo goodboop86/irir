@@ -1,16 +1,10 @@
-## type=1
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import requests
-
-
-
 import json
 
 from db.model.edinet.parameter import Parameter
 from db.model.edinet.resultset import Resultset
-
-
 
 @dataclass
 class Metadata:
@@ -21,10 +15,9 @@ class Metadata:
     status: str
     message: str
 
-    def __init__(self, title: str, parameter: Parameter, resultset: Resultset, processDateTime: str, status: str, message: str):
-        self.title = title
-        self.parameter = Parameter(**parameter)
-        self.resultset = Resultset(**resultset)
-        self.processDateTime = processDateTime
-        self.status = status
-        self.message = message
+    def __post_init__(self):
+        # parameterとresultsetが辞書の場合、dataclassに変換する
+        if isinstance(self.parameter, dict):
+            self.parameter = Parameter(**self.parameter)
+        if isinstance(self.resultset, dict):
+            self.resultset = Resultset(**self.resultset)

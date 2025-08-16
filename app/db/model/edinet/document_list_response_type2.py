@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import List
 
 import requests
@@ -17,13 +17,18 @@ class DocumentListResponseType2:
     metadata: Metadata
     results: List[Results]
 
-    def __init__(self, metadata, results):
-        self.metadata = Metadata(**metadata)
-        self.results = [Results(**item) for item in results]
+    def __post_init__(self):
+        # metadataとresultsが辞書または辞書のリストの場合、dataclassに変換する
+        if isinstance(self.metadata, dict):
+            self.metadata = Metadata(**self.metadata)
+        if isinstance(self.results, list):
+            self.results = [Results(**item) if isinstance(item, dict) else item for item in self.results]
 
     def create_result_items(self):
         yyyymmdd = self.metadata.parameter.date
-        return [asdict(result.proprocess(yyyymmdd=yyyymmdd)) for result in self.results]
+        # import pdb;pdb.set_trace()
+        
+        return [asdict(result.preprocess(yyyymmdd=yyyymmdd)) for result in self.results]
 
 
 if __name__ == "__main__":

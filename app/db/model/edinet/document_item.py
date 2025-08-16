@@ -35,9 +35,11 @@ class Results:
     csvFlag: str = None
     legalStatus: str = None
 
-    def proprocess(self, yyyymmdd: str):
-        if not bool(self.ubmitDateTime):
-            self.ubmitDateTime = yyyymmdd
+    def preprocess(self, yyyymmdd: str):
+        if not bool(self.submitDateTime):
+            self.submitDateTime = yyyymmdd
+
+        return self
 
 
     def submitDateTimeExists(self):
