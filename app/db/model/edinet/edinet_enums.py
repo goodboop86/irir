@@ -5,9 +5,10 @@ class RegalStatus(Enum):
     """
     縦覧ステータスを表すEnumクラス。
     """
-    ON_VIEW = "1"      # 縦覧中
-    EXTENDED = "2"     # 延長期間中
-    EXPIRED = "0"      # 閲覧期間満了
+
+    ON_VIEW = "1"  # 縦覧中
+    EXTENDED = "2"  # 延長期間中
+    EXPIRED = "0"  # 閲覧期間満了
 
     @staticmethod
     def from_string(value: str):
@@ -22,10 +23,11 @@ class DisclosureStatus(Enum):
     """
     EDINET書類の開示ステータスを表すEnumクラス。
     """
+
     NOT_DISCLOSED_BY_STAFF = "1"  # 財務局職員によって書類の不開示を開始した情報
-    NOT_DISCLOSED = "2"           # 不開示とされている書類
-    DISCLOSURE_CANCELED = "3"     # 財務局職員によって書類の不開示を解除した情報
-    OTHER = "0"                   # それ以外
+    NOT_DISCLOSED = "2"  # 不開示とされている書類
+    DISCLOSURE_CANCELED = "3"  # 財務局職員によって書類の不開示を解除した情報
+    OTHER = "0"  # それ以外
 
     @staticmethod
     def from_string(value: str):
@@ -40,18 +42,27 @@ class PrefecturalOrdinanceCode(Enum):
     """
     内閣府令コード
     """
+
     KAISHI_NAIKAKUFUUREI = "010"  # 企業内容等の開示に関する内閣府令
     ZAIMU_KEISAN_JUISEI_KAKUHO_TAISEI = "015"  # 財務計算に関する書類その他の情報の適正性を確保するための体制に関する内閣府令
     GAIKOKUSAI_HAKKOUSHA_KAISHI = "020"  # 外国債等の発行者の開示に関する内閣府令
-    TOKUTEI_YUUKASHOUKEN_NAIYOU_KAISHI = "030"  # 特定有価証券の内容等の開示に関する内閣府令
-    HAKKOU_IGAI_KABUKEN_KOUKAIKAITSUKE_KAISHI = "040"  # 発行者以外の者による株券等の公開買付けの開示に関する内閣府令
-    HAKKOU_JOUJOU_KABUKEN_KOUKAIKAITSUKE_KAISHI = "050"  # 発行者による上場株券等の公開買付けの開示に関する内閣府令
+    TOKUTEI_YUUKASHOUKEN_NAIYOU_KAISHI = (
+        "030"  # 特定有価証券の内容等の開示に関する内閣府令
+    )
+    HAKKOU_IGAI_KABUKEN_KOUKAIKAITSUKE_KAISHI = (
+        "040"  # 発行者以外の者による株券等の公開買付けの開示に関する内閣府令
+    )
+    HAKKOU_JOUJOU_KABUKEN_KOUKAIKAITSUKE_KAISHI = (
+        "050"  # 発行者による上場株券等の公開買付けの開示に関する内閣府令
+    )
     KABUKEN_TAIRYUU_HOYU_KAISHI = "060"  # 株券等の大量保有の状況の開示に関する内閣府令
+
 
 class DocumentTypeCode(Enum):
     """
     書類種別コード
     """
+
     YOUKASHOUKEN_TSUUCHISHO = "010"  # 有価証券通知書
     HENKOU_TSUUCHISHO_YOUKASHOUKEN = "020"  # 変更通知書（有価証券通知書）
     YOUKASHOUKEN_TODEDOKESHO = "030"  # 有価証券届出書
@@ -88,6 +99,10 @@ class DocumentTypeCode(Enum):
     TEISEI_IKEN_HYOMEI_HOUKOKUSHO = "300"  # 訂正意見表明報告書
     TSUI_SHITUMON_KAITOU_HOUKOKUSHO = "310"  # 対質問回答報告書
     TEISEI_TSUI_SHITUMON_KAITOU_HOUKOKUSHO = "320"  # 訂正対質問回答報告書
-    BETTO_KAITSUKE_KINSHI_TOKUREI_MOUSHIDESHO = "330"  # 別途買付け禁止の特例を受けるための申出書
-    TEISEI_BETTO_KAITSUKE_KINSHI_TOKUREI_MOUSHIDESHO = "340"  # 訂正別途買付け禁止の特例を受けるための申出書
+    BETTO_KAITSUKE_KINSHI_TOKUREI_MOUSHIDESHO = (
+        "330"  # 別途買付け禁止の特例を受けるための申出書
+    )
+    TEISEI_BETTO_KAITSUKE_KINSHI_TOKUREI_MOUSHIDESHO = (
+        "340"  # 訂正別途買付け禁止の特例を受けるための申出書
+    )
     TAIRYUU_HOYU_HOUKOKUSHO = "350"  # 大量保有報告書

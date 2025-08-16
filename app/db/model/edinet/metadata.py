@@ -1,10 +1,9 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-import requests
-import json
 
 from db.model.edinet.parameter import Parameter
 from db.model.edinet.resultset import Resultset
+
 
 @dataclass
 class Metadata:
