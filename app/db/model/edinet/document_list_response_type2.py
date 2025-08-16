@@ -27,9 +27,9 @@ class DocumentListResponseType2:
 
     def create_result_items(self):
         yyyymmdd = self.metadata.parameter.date
-        # import pdb;pdb.set_trace()
+        results = list(filter(lambda result: result.is_viewable, self.results))
 
-        return [asdict(result.preprocess(yyyymmdd=yyyymmdd)) for result in self.results]
+        return [asdict(result.preprocess(yyyymmdd=yyyymmdd)) for result in results]
 
 
 if __name__ == "__main__":

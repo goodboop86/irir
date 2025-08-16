@@ -40,6 +40,9 @@ class Results:
     def has_submitdatetime(self):
         return bool(self.submitDateTime)
 
+    def has_edinetcode(self):
+        return bool(self.edinetCode)
+
     def has_pdf(self) -> bool:
         return Utils.broad_enable(self.pdfFlag)
 
@@ -55,10 +58,11 @@ class Results:
     def has_englishdoc(self) -> bool:
         return Utils.broad_enable(self.englishDocFlag)
 
-    def get_regalstatus(self) -> RegalStatus:
-        return RegalStatus.from_string(self.legalStatus)
+    def is_viewable(self) -> RegalStatus:
+        status = RegalStatus.from_string(self.legalStatus)
+        return status in (RegalStatus.ON_VIEW or RegalStatus.EXTENDED)
 
-    def get_disclosurestatus(self) -> RegalStatus:
+    def get_disclosurestatus(self) -> DisclosureStatus:
         return DisclosureStatus.from_string(self.legalStatus)
 
     def preprocess(self, yyyymmdd: str):
