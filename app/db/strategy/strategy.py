@@ -9,6 +9,7 @@ import requests
 from tenacity import retry, stop_after_attempt, wait_fixed
 from boto3.session import Session
 
+from common.main.lib.utils import Utils
 from db.model.edinet.document_list_response_type2 import DocumentListResponseType2
 
 
@@ -24,6 +25,7 @@ class CreateAwsSession(Strategy):
     profile_name: str
 
     @override
+    @Utils.trace
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
 
@@ -38,6 +40,7 @@ class GetApiKeyFromAws(Strategy):
     region_name: str
 
     @override
+    @Utils.trace
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
 
@@ -68,6 +71,7 @@ class GetDocumentListFromEdiNetApi(Strategy):
     endpoint: str = "https://api.edinet-fsa.go.jp/api/v2/documents.json"
 
     @override
+    @Utils.trace
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
         params = {
@@ -86,26 +90,31 @@ class GetItemsFromDocumentListReaponse(Strategy):
     document_list_response: DocumentListResponseType2
 
     @override
+    @Utils.trace
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
+        # import pdb;pdb.set_trace()
         return self.document_list_response.create_result_items()
+
 
 @dataclass
 class InsertItemsToDynamoDb(Strategy):
     session: Session
-    items: dict
+    items: list[dict]
     target_table: str
 
     @override
+    @Utils.trace
     # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
         resource = self.session.resource("dynamodb")
-        resource.Table(self.target_table)
+        table = resource.Table(self.target_table)
 
         for item in self.items:
-            pprint(item)
+            pass
+            # pprint(item)
             # table.put_item(Item=item)
-            
+
 
 @dataclass
 class DownloadDocumentFromEdiNetApi(Strategy):
@@ -116,6 +125,7 @@ class DownloadDocumentFromEdiNetApi(Strategy):
     endpoint: str = "https://api.edinet-fsa.go.jp/api/v2/documents/"
 
     @override
+    @Utils.trace
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
         endpoint = self.endpoint + self.docID

@@ -26,10 +26,16 @@ class DocumentListResponseType2:
             ]
 
     def create_result_items(self):
-        yyyymmdd = self.metadata.parameter.date
-        results = list(filter(lambda result: result.is_viewable, self.results))
+        try: 
+            yyyymmdd = self.metadata.parameter.date
+            results = self.results
+            results = list(filter(lambda result: result.is_viewable(), results))
+            results = list(filter(lambda result: result.has_anyitem(), results))
+            return [asdict(result.preprocess(yyyymmdd=yyyymmdd)) for result in results]
+        except Exception as e:
+            print(f"{e}")
+            raise
 
-        return [asdict(result.preprocess(yyyymmdd=yyyymmdd)) for result in results]
 
 
 if __name__ == "__main__":

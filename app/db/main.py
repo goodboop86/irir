@@ -18,26 +18,36 @@ from db.strategy.strategy import (
 
 def run():
 
-    session = CreateAwsSession(profile_name="gb86sub").execute()
+    profile = "gb86sub"
+    secret_name="EdinetApiKey"
+    key_name="EDINET_API_KEY"
+    region_name="ap-northeast-1"
+    yyyymmdd="2023-08-28"
+    target_table="edinet-document_list-api"
+    
+
+    session = CreateAwsSession(profile_name=profile).execute()
 
     apikey = GetApiKeyFromAws(
         session=session,
-        secret_name="EdinetApiKey",
-        key_name="EDINET_API_KEY",
-        region_name="ap-northeast-1",
+        secret_name=secret_name,
+        key_name=key_name,
+        region_name=region_name,
     ).execute()
 
     documentlist = GetDocumentListFromEdiNetApi(
-        type="2", api_key=apikey, yyyymmdd="2023-08-28"
+        type="2", api_key=apikey, yyyymmdd=yyyymmdd
     ).execute()
 
     items = GetItemsFromDocumentListReaponse(
         document_list_response=documentlist
     ).execute()
 
-    InsertItemsToDynamoDb(session=session, items=items, target_table="edinet-document_list-api")
+    InsertItemsToDynamoDb(
+        session=session, items=items, target_table=target_table
+    ).execute()
 
-    pprint(items)
+    # pprint(items)
 
 
 if __name__ == "__main__":

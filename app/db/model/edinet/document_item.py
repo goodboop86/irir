@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+import logging
+from pprint import pprint
 from typing import Optional
 
 from common.main.lib.utils import Utils
@@ -7,35 +9,37 @@ from db.model.edinet.edinet_enums import DisclosureStatus, RegalStatus
 
 @dataclass
 class Results:
-    seqNumber: int = None
-    docID: str = None
-    edinetCode: str = None
-    secCode: Optional[str] = None  # (*1, *2)
     JCN: Optional[str] = None  # (*1)
-    filerName: str = None  # (*2) - seems to be always present
-    fundCode: Optional[str] = None  # (*1)
-    ordinanceCode: Optional[str] = None  # (*1)
-    formCode: Optional[str] = None  # (*1)
+    currentReportReason: Optional[str] = None  # (*4) - comma-separated if multiple
+    disclosureStatus: str = None
+    docID: str = None
+    docInfoEditStatus: str = None
     docTypeCode: Optional[str] = None  # (*1)
+    docDescription: str = None
+    edinetCode: str = None
+    fundCode: Optional[str] = None  # (*1)
+    filerName: str = None  # (*2) - seems to be always present
+    formCode: Optional[str] = None  # (*1)
+    issuerEdinetCode: Optional[str] = None  # (*1, *2)
+    legalStatus: str = None
+    ordinanceCode: Optional[str] = None  # (*1)
+    opeDateTime: str = None  # YYYY-MM-DD hh:mm
     periodStart: Optional[str] = None  # (*3) - YYYY-MM-DD, optional for some types
     periodEnd: Optional[str] = None  # (*3) - YYYY-MM-DD, optional for some types
+    parentDocID: Optional[str] = None  # (*1)
+    seqNumber: int = None
+    secCode: Optional[str] = None  # (*1, *2)
     submitDateTime: str = None  # YYYY-MM-DD hh:mm
-    docDescription: str = None
-    issuerEdinetCode: Optional[str] = None  # (*1, *2)
     subjectEdinetCode: Optional[str] = None  # (*1, *2)
     subsidiaryEdinetCode: Optional[str] = None  # (*1, *2) - comma-separated if multiple
-    currentReportReason: Optional[str] = None  # (*4) - comma-separated if multiple
-    parentDocID: Optional[str] = None  # (*1)
-    opeDateTime: str = None  # YYYY-MM-DD hh:mm
     withdrawalStatus: str = None
-    docInfoEditStatus: str = None
-    disclosureStatus: str = None
-    xbrlFlag: str = None
-    pdfFlag: str = None
     attachDocFlag: str = None
-    englishDocFlag: str = None
     csvFlag: str = None
-    legalStatus: str = None
+    englishDocFlag: str = None
+    pdfFlag: str = None
+    xbrlFlag: str = None
+    logger = logging.getLogger(__name__)
+
 
     def has_submitdatetime(self):
         return bool(self.submitDateTime)
@@ -60,7 +64,16 @@ class Results:
 
     def is_viewable(self) -> RegalStatus:
         status = RegalStatus.from_string(self.legalStatus)
-        return status in (RegalStatus.ON_VIEW or RegalStatus.EXTENDED)
+        is_viewable = status in [RegalStatus.ON_VIEW or RegalStatus.EXTENDED]
+        if not is_viewable:
+            self.logger.info(f"skip {self.docID}")
+        return is_viewable
+    
+    def has_anyitem(self) -> RegalStatus:
+        has_anyitem = any([self.has_pdf(), self.has_csv(), self.has_edinetcode(), self.has_xbrl(), self.has_attachdoc(), self.has_englishdoc()])
+        if not has_anyitem:
+            self.logger.info(f"skip {self.docID}")
+        return has_anyitem
 
     def get_disclosurestatus(self) -> DisclosureStatus:
         return DisclosureStatus.from_string(self.legalStatus)
@@ -68,10 +81,15 @@ class Results:
     def preprocess(self, yyyymmdd: str):
         """DynamoDB登録用に整形して返す"""
         self.__embed_date_if_not_exist(yyyymmdd=yyyymmdd)
-
+        self.__embed_edinetcode_if_not_exist()
         return self
 
     def __embed_date_if_not_exist(self, yyyymmdd: str):
         """submitDateTimeが存在しないなら、受け取った日付(APIリクエスト日を想定)を埋めて返す"""
         if not bool(self.submitDateTime):
             self.submitDateTime = yyyymmdd
+
+    def __embed_edinetcode_if_not_exist(self, text: str = "NOT_SPECIFIED"):
+        """submitDateTimeが存在しないなら、受け取った日付(APIリクエスト日を想定)を埋めて返す"""
+        if not bool(self.edinetCode):
+            self.edinetCode = text
