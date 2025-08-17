@@ -111,9 +111,7 @@ class InsertItemsToDynamoDb(Strategy):
         table = resource.Table(self.target_table)
 
         for item in self.items:
-            pass
-            # pprint(item)
-            # table.put_item(Item=item)
+            table.put_item(Item=item)
 
 
 @dataclass
