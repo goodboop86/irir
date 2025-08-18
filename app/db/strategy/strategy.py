@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
 import json
+import logging
 from pprint import pprint
 from typing import override
 import boto3
@@ -13,10 +14,12 @@ from common.main.lib.utils import Utils
 from db.model.edinet.document_item import Results
 from db.model.edinet.document_list_response_type2 import DocumentListResponseType2
 from db.model.edinet.edinet_enums import DocType
+from boto3.dynamodb.conditions import Key
 
 
 @dataclass
 class Strategy:
+    logger = logging.getLogger(__name__)
     @abstractmethod
     def execute(self):
         pass
@@ -104,6 +107,12 @@ class InsertItemsToDynamoDb(Strategy):
     items: list[Results]
     target_table: str
 
+    def __post_init__(self):
+        resource = self.session.resource("dynamodb")
+        self.table = resource.Table(self.target_table)
+
+
+
     @override
     @Utils.trace
     # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
@@ -112,7 +121,36 @@ class InsertItemsToDynamoDb(Strategy):
         table = resource.Table(self.target_table)
 
         for item in self.items:
-            table.put_item(Item=asdict(item))
+            if not self.doc_id_exists(gsi_name="docID-index", target=item.docID):
+                self.insert(table, asdict(item))
+            else:
+                self.logger.info(f"[SKIP]{item.docID} is already exists.")
+                
+    
+    def doc_id_exists(self, gsi_name, target):
+        """
+        指定されたdocIDがGSIに存在するかを確認する。
+        """
+        
+        try:
+            response = self.table.query(
+                IndexName=gsi_name,
+                KeyConditionExpression=Key('docID').eq(target),
+                ProjectionExpression='docID'
+            )
+            
+            return len(response['Items']) > 0
+            
+        except ClientError as e:
+            print(f"クエリ中にエラーが発生しました: {e.response['Error']['Message']}")
+            return False
+
+    @Utils.trace
+    def insert(self, table, item):
+        table.put_item(Item=item)
+
+
+
 
 
 @dataclass
@@ -135,13 +173,13 @@ class DownloadDocumentFromEdiNetApi(Strategy):
 
         for result in self.results:
             if result.has_xbrl():
-                arglist.add(to_args(t=DocType.XBRL, p=args | {"type": "1"}))
+                arglist.add(to_args(docid=result.docID, t=DocType.XBRL, p=args | {"type": "1"}))
             if result.has_pdf():
-                arglist.add(to_args(t=DocType.PDF, p=args | {"type": "2"}))
+                arglist.add(to_args(docid=result.docID, t=DocType.PDF, p=args | {"type": "2"}))
             if result.has_englishdoc():
-                arglist.add(to_args(t=DocType.ENGLISH, p=args | {"type": "4"}))
+                arglist.add(to_args(docid=result.docID, t=DocType.ENGLISH, p=args | {"type": "4"}))
             if result.has_csv():
-                arglist.add(to_args(t=DocType.CSV, p=args | {"type": "5"}))
+                arglist.add(to_args(docid=result.docID, t=DocType.CSV, p=args | {"type": "5"}))
 
         for args in arglist:
             self.download(**args)

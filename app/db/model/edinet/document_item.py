@@ -66,13 +66,13 @@ class Results:
         status = RegalStatus.from_string(self.legalStatus)
         is_viewable = status in [RegalStatus.ON_VIEW or RegalStatus.EXTENDED]
         if not is_viewable:
-            self.logger.info(f"skip {self.docID}")
+            self.logger.info(f"[SKIP] {self.docID} is not viewable.")
         return is_viewable
     
     def has_anyitem(self) -> RegalStatus:
         has_anyitem = any([self.has_pdf(), self.has_csv(), self.has_edinetcode(), self.has_xbrl(), self.has_attachdoc(), self.has_englishdoc()])
         if not has_anyitem:
-            self.logger.info(f"skip {self.docID}")
+            self.logger.info(f"[SKIP] {self.docID} does'nt have enough information.")
         return has_anyitem
 
     def get_disclosurestatus(self) -> DisclosureStatus:

@@ -50,7 +50,7 @@ def run():
         session=session, items=items, target_table=target_table
     ).execute()
 
-    DownloadDocumentFromEdiNetApi(api_key=apikey, results=items)
+    DownloadDocumentFromEdiNetApi(api_key=apikey, results=items).execute()
 
 
 
