@@ -2,6 +2,7 @@ from abc import abstractmethod
 from dataclasses import asdict, dataclass, field
 import json
 import logging
+import os
 from pprint import pprint
 from typing import List, Optional, override
 import boto3
@@ -142,13 +143,14 @@ class InsertItemsToDynamoDb(Strategy):
 class DownloadDocumentFromEdiNetApi(Strategy):
     api_key: str
     results: list[Results]
+    work_dir: str
     endpoint: str = "https://api.edinet-fsa.go.jp/api/v2/documents/"
 
     @override
     @Utils.trace
     async def execute(self):
-        async def to_args(docid, t: DocType, p):
-            return {"url": f"{self.endpoint}/{docid}", "filename": f"{docid}__{t.name}.zip", "param": p}
+        async def to_args(docid, t: DocType, p: dict, sd: str):
+            return {"url": f"{self.endpoint}/{docid}", "filename": f"{docid}__{t.name}.zip", "param": p, "save_dir": sd}
 
         arglist: list[dict] = []
         args = {
@@ -156,31 +158,38 @@ class DownloadDocumentFromEdiNetApi(Strategy):
         }
 
         for result in self.results:
+            save_dir = f"{self.work_dir}/{result.edinetCode}"
+
             if result.has_xbrl():
-                arglist.append(await to_args(docid=result.docID, t=DocType.XBRL, p=args | {"type": "1"}))
+                arglist.append(await to_args(docid=result.docID, t=DocType.XBRL, p=args | {"type": "1"}, sd=save_dir))
             if result.has_pdf():
-                arglist.append(await to_args(docid=result.docID, t=DocType.PDF, p=args | {"type": "2"}))
+                arglist.append(await to_args(docid=result.docID, t=DocType.PDF, p=args | {"type": "2"}, sd=save_dir))
             if result.has_englishdoc():
-                arglist.append(await to_args(docid=result.docID, t=DocType.ENGLISH, p=args | {"type": "4"}))
+                arglist.append(await to_args(docid=result.docID, t=DocType.ENGLISH, p=args | {"type": "4"}, sd=save_dir))
             if result.has_csv():
-                arglist.append(await to_args(docid=result.docID, t=DocType.CSV, p=args | {"type": "5"}))
+                arglist.append(await to_args(docid=result.docID, t=DocType.CSV, p=args | {"type": "5"}, sd=save_dir))
+
 
         async with aiohttp.ClientSession() as session:
-            tasks = [self.download(session, **args) for args in arglist[:10]]
+            tasks = [self.download(session, **args) for args in arglist]
             await asyncio.gather(*tasks)
 
-    async def download(self, session: aiohttp.ClientSession, url: str, filename: str, param: dict):
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
+    async def download(self, session: aiohttp.ClientSession, url: str, filename: str, param: dict, save_dir: str):
+
+        os.makedirs(save_dir, exist_ok=True)
+
         try:
             async with session.get(url, params=param) as response:
                 response.raise_for_status()
                 
-                async with aiofiles.open(filename, 'wb') as f:
+                async with aiofiles.open(f"{save_dir}/{filename}", 'wb') as f:
                     async for chunk in response.content.iter_chunked(8192):
                         await f.write(chunk)
             
             self.logger.info(f"[DONE]download: {filename}")
         
         except aiohttp.ClientError as e:
-            self.logger.error(f"error while downloading: {e}")
+            self.logger.error(f"error while downloading [{filename}]: {e}")
         except IOError as e:
-            self.logger.error(f"error while file writing: {e}")
+            self.logger.error(f"error while file writing [{filename}]: {e}")

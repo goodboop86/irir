@@ -44,8 +44,8 @@ class Results:
     def has_submitdatetime(self):
         return bool(self.submitDateTime)
 
-    def has_edinetcode(self):
-        return bool(self.edinetCode)
+    # def has_edinetcode(self):
+    #     return bool(self.edinetCode)
 
     def has_pdf(self) -> bool:
         return Utils.broad_enable(self.pdfFlag)
@@ -76,7 +76,7 @@ class Results:
         return has_anyitem
     
     def has_edinetcode(self) -> RegalStatus:
-        has_edinetcode = self.has_edinetcode()
+        has_edinetcode = bool(self.edinetCode)
         if not has_edinetcode:
             self.logger.info(f"[SKIP] {self.docID} does'nt have edinet-code.")
         return has_edinetcode

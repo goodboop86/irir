@@ -47,7 +47,7 @@ async def run():
         document_list_response=documentlist
     ).execute()
 
-    await DownloadDocumentFromEdiNetApi(api_key=apikey, results=items).execute()
+    await DownloadDocumentFromEdiNetApi(api_key=apikey, results=items, work_dir="download").execute()
 
 
     InsertItemsToDynamoDb(
