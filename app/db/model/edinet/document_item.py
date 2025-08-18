@@ -70,11 +70,17 @@ class Results:
         return is_viewable
     
     def has_anyitem(self) -> RegalStatus:
-        has_anyitem = any([self.has_pdf(), self.has_csv(), self.has_edinetcode(), self.has_xbrl(), self.has_attachdoc(), self.has_englishdoc()])
+        has_anyitem = any([self.has_pdf(), self.has_csv(), self.has_xbrl(), self.has_attachdoc(), self.has_englishdoc()])
         if not has_anyitem:
             self.logger.info(f"[SKIP] {self.docID} does'nt have enough information.")
         return has_anyitem
-
+    
+    def has_edinetcode(self) -> RegalStatus:
+        has_edinetcode = self.has_edinetcode()
+        if not has_edinetcode:
+            self.logger.info(f"[SKIP] {self.docID} does'nt have edinet-code.")
+        return has_edinetcode
+    
     def get_disclosurestatus(self) -> DisclosureStatus:
         return DisclosureStatus.from_string(self.legalStatus)
 

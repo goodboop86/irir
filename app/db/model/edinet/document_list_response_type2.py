@@ -30,6 +30,7 @@ class DocumentListResponseType2:
             yyyymmdd = self.metadata.parameter.date
             results = self.results
             results = list(filter(lambda result: result.is_viewable(), results))
+            results = list(filter(lambda result: result.has_edinetcode(), results))
             results = list(filter(lambda result: result.has_anyitem(), results))
             return [result.preprocess(yyyymmdd=yyyymmdd) for result in results]
         except Exception as e:

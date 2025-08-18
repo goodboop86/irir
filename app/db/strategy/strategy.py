@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError
 import asyncio
 import aiohttp
 import aiofiles
+import requests
 from tenacity import retry, stop_after_attempt, wait_fixed
 from boto3.session import Session
 
@@ -89,10 +90,9 @@ class GetItemsFromDocumentListReaponse(Strategy):
     document_list_response: DocumentListResponseType2
 
     @override
-    @Utils.trace # This is a synchronous method
+    @Utils.trace
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self) -> list[Results]:
-        # Assuming create_valid_result_items exists and is synchronous
         return self.document_list_response.create_valid_result_items()
 
 
@@ -145,9 +145,7 @@ class DownloadDocumentFromEdiNetApi(Strategy):
     endpoint: str = "https://api.edinet-fsa.go.jp/api/v2/documents/"
 
     @override
-    # @Utils.trace # trace decorator might not be compatible with async methods directly
-    # The trace decorator needs to be applied to async methods as well.
-    # The new Utils.trace should handle this.
+    @Utils.trace
     async def execute(self):
         async def to_args(docid, t: DocType, p):
             return {"url": f"{self.endpoint}/{docid}", "filename": f"{docid}__{t.name}.zip", "param": p}
@@ -168,24 +166,21 @@ class DownloadDocumentFromEdiNetApi(Strategy):
                 arglist.append(await to_args(docid=result.docID, t=DocType.CSV, p=args | {"type": "5"}))
 
         async with aiohttp.ClientSession() as session:
-            # Pass the session to the download method
-            tasks = [self.download(session, **args) for args in arglist]
+            tasks = [self.download(session, **args) for args in arglist[:10]]
             await asyncio.gather(*tasks)
 
-    # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1)) # tenacity might need async version for async functions
-    # The trace decorator should be applied here as well.
     async def download(self, session: aiohttp.ClientSession, url: str, filename: str, param: dict):
         try:
-            async with session.get(url, params=param, stream=True) as response:
+            async with session.get(url, params=param) as response:
                 response.raise_for_status()
                 
                 async with aiofiles.open(filename, 'wb') as f:
                     async for chunk in response.content.iter_chunked(8192):
                         await f.write(chunk)
             
-            self.logger.info(f"ファイルのダウンロードが完了しました: {filename}")
+            self.logger.info(f"[DONE]download: {filename}")
         
         except aiohttp.ClientError as e:
-            self.logger.error(f"ダウンロード中にエラーが発生しました: {e}")
+            self.logger.error(f"error while downloading: {e}")
         except IOError as e:
-            self.logger.error(f"ファイル書き込み中にエラーが発生しました: {e}")
+            self.logger.error(f"error while file writing: {e}")

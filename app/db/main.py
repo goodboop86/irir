@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import asdict
 import json
 from pprint import pprint
@@ -19,7 +20,7 @@ from db.strategy.strategy import (
 #     resp = json.loads(f.read())
 
 
-def run():
+async def run():
 
     profile = "gb86sub"
     secret_name="EdinetApiKey"
@@ -46,7 +47,7 @@ def run():
         document_list_response=documentlist
     ).execute()
 
-    DownloadDocumentFromEdiNetApi(api_key=apikey, results=items).execute()
+    await DownloadDocumentFromEdiNetApi(api_key=apikey, results=items).execute()
 
 
     InsertItemsToDynamoDb(
@@ -59,4 +60,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    asyncio.run(run())
