@@ -1,5 +1,10 @@
 from enum import Enum
 
+class DocType(Enum):
+    XBRL = "XBRL"
+    PDF = "PDF"
+    ENGLISH = "ENGLISH"
+    CSV = "CSV"
 
 class RegalStatus(Enum):
     """

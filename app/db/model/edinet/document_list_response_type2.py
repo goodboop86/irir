@@ -25,13 +25,13 @@ class DocumentListResponseType2:
                 for item in self.results
             ]
 
-    def create_result_items(self):
+    def create_valid_result_items(self) -> list[Results]:
         try: 
             yyyymmdd = self.metadata.parameter.date
             results = self.results
             results = list(filter(lambda result: result.is_viewable(), results))
             results = list(filter(lambda result: result.has_anyitem(), results))
-            return [asdict(result.preprocess(yyyymmdd=yyyymmdd)) for result in results]
+            return [result.preprocess(yyyymmdd=yyyymmdd) for result in results]
         except Exception as e:
             print(f"{e}")
             raise

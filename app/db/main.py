@@ -1,10 +1,13 @@
+from dataclasses import asdict
 import json
 from pprint import pprint
 import boto3
 
+from db.model.edinet.document_item import Results
 from db.model.edinet.document_list_response_type2 import DocumentListResponseType2
 from db.strategy.strategy import (
     CreateAwsSession,
+    DownloadDocumentFromEdiNetApi,
     GetApiKeyFromAws,
     GetDocumentListFromEdiNetApi,
     GetItemsFromDocumentListReaponse,
@@ -39,13 +42,17 @@ def run():
         type="2", api_key=apikey, yyyymmdd=yyyymmdd
     ).execute()
 
-    items = GetItemsFromDocumentListReaponse(
+    items: list[Results] = GetItemsFromDocumentListReaponse(
         document_list_response=documentlist
     ).execute()
 
     InsertItemsToDynamoDb(
         session=session, items=items, target_table=target_table
     ).execute()
+
+    DownloadDocumentFromEdiNetApi(api_key=apikey, results=items)
+
+
 
     # pprint(items)
 
