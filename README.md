@@ -39,6 +39,8 @@ IRIRは、金融庁のEDINET（Electronic Disclosure for Investors' NETwork）AP
    uv add streamlit
    uv add fastapi --extra standard
    uv add tenacity # retry処理
+   uv add aiohttp
+   uv add aiofiles
 
    # aws
    uv add boto3

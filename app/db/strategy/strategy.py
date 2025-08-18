@@ -1,12 +1,14 @@
 from abc import abstractmethod
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 import json
 import logging
 from pprint import pprint
-from typing import override
+from typing import List, Optional, override
 import boto3
 from botocore.exceptions import ClientError
-import requests
+import asyncio
+import aiohttp
+import aiofiles
 from tenacity import retry, stop_after_attempt, wait_fixed
 from boto3.session import Session
 
@@ -33,7 +35,6 @@ class CreateAwsSession(Strategy):
     @Utils.trace
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
-
         return boto3.Session(profile_name=self.profile_name)
 
 
@@ -48,23 +49,17 @@ class GetApiKeyFromAws(Strategy):
     @Utils.trace
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
-
         # Create a Secrets Manager client
         client = self.session.client(
             service_name="secretsmanager", region_name=self.region_name
         )
-
         try:
             get_secret_value_response = client.get_secret_value(
                 SecretId=self.secret_name
             )
         except ClientError as e:
-            # For a list of exceptions thrown, see
-            # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
             raise e
-
         secret = get_secret_value_response["SecretString"]
-
         return json.loads(secret)[self.key_name]
 
 
@@ -86,7 +81,6 @@ class GetDocumentListFromEdiNetApi(Strategy):
         }
         res = requests.get(self.endpoint, params=params)
         res.raise_for_status()
-
         return DocumentListResponseType2(**res.json())
 
 
@@ -95,9 +89,10 @@ class GetItemsFromDocumentListReaponse(Strategy):
     document_list_response: DocumentListResponseType2
 
     @override
-    @Utils.trace
+    @Utils.trace # This is a synchronous method
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self) -> list[Results]:
+        # Assuming create_valid_result_items exists and is synchronous
         return self.document_list_response.create_valid_result_items()
 
 
@@ -111,59 +106,50 @@ class InsertItemsToDynamoDb(Strategy):
         resource = self.session.resource("dynamodb")
         self.table = resource.Table(self.target_table)
 
-
-
     @override
-    @Utils.trace
-    # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
+    @Utils.trace # This is a synchronous method
+    # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1)) # Retry might need async version for async methods
     def execute(self):
         resource = self.session.resource("dynamodb")
         table = resource.Table(self.target_table)
-
         for item in self.items:
             if not self.doc_id_exists(gsi_name="docID-index", target=item.docID):
                 self.insert(table, asdict(item))
             else:
                 self.logger.info(f"[SKIP]{item.docID} is already exists.")
-                
     
     def doc_id_exists(self, gsi_name, target):
         """
         指定されたdocIDがGSIに存在するかを確認する。
         """
-        
         try:
             response = self.table.query(
                 IndexName=gsi_name,
                 KeyConditionExpression=Key('docID').eq(target),
                 ProjectionExpression='docID'
             )
-            
             return len(response['Items']) > 0
-            
         except ClientError as e:
             print(f"クエリ中にエラーが発生しました: {e.response['Error']['Message']}")
             return False
 
-    @Utils.trace
+    @Utils.trace # This is a synchronous method
     def insert(self, table, item):
         table.put_item(Item=item)
 
 
-
-
-
 @dataclass
 class DownloadDocumentFromEdiNetApi(Strategy):
-    # TODO
     api_key: str
     results: list[Results]
     endpoint: str = "https://api.edinet-fsa.go.jp/api/v2/documents/"
 
     @override
-    @Utils.trace
-    def execute(self):
-        def to_args(docid, t: DocType, p):
+    # @Utils.trace # trace decorator might not be compatible with async methods directly
+    # The trace decorator needs to be applied to async methods as well.
+    # The new Utils.trace should handle this.
+    async def execute(self):
+        async def to_args(docid, t: DocType, p):
             return {"url": f"{self.endpoint}/{docid}", "filename": f"{docid}__{t.name}.zip", "param": p}
 
         arglist: list[dict] = []
@@ -173,35 +159,33 @@ class DownloadDocumentFromEdiNetApi(Strategy):
 
         for result in self.results:
             if result.has_xbrl():
-                arglist.add(to_args(docid=result.docID, t=DocType.XBRL, p=args | {"type": "1"}))
+                arglist.append(await to_args(docid=result.docID, t=DocType.XBRL, p=args | {"type": "1"}))
             if result.has_pdf():
-                arglist.add(to_args(docid=result.docID, t=DocType.PDF, p=args | {"type": "2"}))
+                arglist.append(await to_args(docid=result.docID, t=DocType.PDF, p=args | {"type": "2"}))
             if result.has_englishdoc():
-                arglist.add(to_args(docid=result.docID, t=DocType.ENGLISH, p=args | {"type": "4"}))
+                arglist.append(await to_args(docid=result.docID, t=DocType.ENGLISH, p=args | {"type": "4"}))
             if result.has_csv():
-                arglist.add(to_args(docid=result.docID, t=DocType.CSV, p=args | {"type": "5"}))
+                arglist.append(await to_args(docid=result.docID, t=DocType.CSV, p=args | {"type": "5"}))
 
-        for args in arglist:
-            self.download(**args)
+        async with aiohttp.ClientSession() as session:
+            # Pass the session to the download method
+            tasks = [self.download(session, **args) for args in arglist]
+            await asyncio.gather(*tasks)
 
-    @Utils.trace
-    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-    def download(self, url, filename, param):
+    # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1)) # tenacity might need async version for async functions
+    # The trace decorator should be applied here as well.
+    async def download(self, session: aiohttp.ClientSession, url: str, filename: str, param: dict):
         try:
-            with requests.get(url, params=param, stream=True) as response:
-                # ステータスコードが200（成功）であることを確認
+            async with session.get(url, params=param, stream=True) as response:
                 response.raise_for_status()
                 
-                # バイナリ書き込みモードでファイルを開く
-                with open(filename, 'wb') as f:
-                    # チャンクごとにデータを読み込み、ファイルに書き込む
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk: # キープアライブメッセージなどの空のチャンクを除外
-                            f.write(chunk)
+                async with aiofiles.open(filename, 'wb') as f:
+                    async for chunk in response.content.iter_chunked(8192):
+                        await f.write(chunk)
             
-            print(f"ファイルのダウンロードが完了しました: {filename}")
+            self.logger.info(f"ファイルのダウンロードが完了しました: {filename}")
         
-        except requests.RequestException as e:
-            print(f"ダウンロード中にエラーが発生しました: {e}")
+        except aiohttp.ClientError as e:
+            self.logger.error(f"ダウンロード中にエラーが発生しました: {e}")
         except IOError as e:
-            print(f"ファイル書き込み中にエラーが発生しました: {e}")
+            self.logger.error(f"ファイル書き込み中にエラーが発生しました: {e}")

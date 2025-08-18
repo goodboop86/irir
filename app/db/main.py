@@ -46,11 +46,12 @@ def run():
         document_list_response=documentlist
     ).execute()
 
+    DownloadDocumentFromEdiNetApi(api_key=apikey, results=items).execute()
+
+
     InsertItemsToDynamoDb(
         session=session, items=items, target_table=target_table
     ).execute()
-
-    DownloadDocumentFromEdiNetApi(api_key=apikey, results=items).execute()
 
 
 
