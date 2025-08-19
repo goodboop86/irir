@@ -15,7 +15,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 from boto3.session import Session
 
 from common.main.lib.utils import Utils
-from db.model.edinet.document_item import Results
+from db.model.edinet.document_item import DbInfo, DbItem, FileInfo, Results
 from db.model.edinet.document_list_response_type2 import DocumentListResponseType2
 from db.model.edinet.edinet_enums import DocType
 from boto3.dynamodb.conditions import Key
@@ -149,47 +149,105 @@ class DownloadDocumentFromEdiNetApi(Strategy):
     @override
     @Utils.trace
     async def execute(self):
-        async def to_args(docid, t: DocType, p: dict, sd: str):
-            return {"url": f"{self.endpoint}/{docid}", "filename": f"{docid}__{t.name}.zip", "param": p, "save_dir": sd}
 
-        arglist: list[dict] = []
-        args = {
+        async with aiohttp.ClientSession() as session:
+            tasks = [self.download(session, result) for result in self.results]
+            db_items: list[DbItem] = await asyncio.gather(*tasks)
+            return db_items
+
+
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
+    async def download(self, session: aiohttp.ClientSession, results: Results):
+
+        db_item = DbItem(**asdict(results))
+
+        
+        url = f"{self.endpoint}/{db_item.docID}"
+
+        param = {
             "Subscription-Key": self.api_key,
         }
 
-        for result in self.results:
-            save_dir = f"{self.work_dir}/{result.edinetCode}"
+        save_dir = f"{self.work_dir}/{db_item.edinetCode}/{db_item.docID}"
+        os.makedirs(save_dir, exist_ok=True)
 
-            if result.has_xbrl():
-                arglist.append(await to_args(docid=result.docID, t=DocType.XBRL, p=args | {"type": "1"}, sd=save_dir))
-            if result.has_pdf():
-                arglist.append(await to_args(docid=result.docID, t=DocType.PDF, p=args | {"type": "2"}, sd=save_dir))
-            if result.has_englishdoc():
-                arglist.append(await to_args(docid=result.docID, t=DocType.ENGLISH, p=args | {"type": "4"}, sd=save_dir))
-            if result.has_csv():
-                arglist.append(await to_args(docid=result.docID, t=DocType.CSV, p=args | {"type": "5"}, sd=save_dir))
+        if db_item.has_xbrl():
+            filepath: str = f"{save_dir}/{DocType.XBRL.name}.zip"
+            is_success = await self.savefile(session=session, url=url, param=param | {"type": "1"},filepath=filepath)
+            if is_success:
+                db_item.xbrl_info = FileInfo(filepath=filepath)
+        
+        if db_item.has_pdf():
+            filepath: str = f"{save_dir}/{DocType.PDF.name}.zip"
+            is_success = await self.savefile(session=session, url=url, param=param | {"type": "2"},filepath=filepath)
+            if is_success:
+                db_item.pdf_info = FileInfo(filepath=filepath)
+
+        if db_item.has_attachdoc():
+            filepath: str = f"{save_dir}/{DocType.ATTACH.name}.zip"
+            is_success = await self.savefile(session=session, url=url, param=param | {"type": "4"},filepath=filepath)
+            if is_success:
+                db_item.english_info = FileInfo(filepath=filepath)
+        
+        if db_item.has_englishdoc():
+            filepath: str = f"{save_dir}/{DocType.ENGLISH.name}.zip"
+            is_success = await self.savefile(session=session, url=url, param=param | {"type": "4"},filepath=filepath)
+            if is_success:
+                db_item.english_info = FileInfo(filepath=filepath)
+        
+        if db_item.has_csv():
+            filepath: str = f"{save_dir}/{DocType.CSV.name}.zip"
+            is_success = await self.savefile(session=session, url=url, param=param | {"type": "5"},filepath=filepath)
+            if is_success:
+                db_item.csv_info = FileInfo(filepath=filepath)
+
+        return db_item
 
 
-        async with aiohttp.ClientSession() as session:
-            tasks = [self.download(session, **args) for args in arglist]
-            await asyncio.gather(*tasks)
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-    async def download(self, session: aiohttp.ClientSession, url: str, filename: str, param: dict, save_dir: str):
-
-        os.makedirs(save_dir, exist_ok=True)
+    async def savefile(self, session: aiohttp.ClientSession, url: str, param: dict, filepath: str) -> bool:
 
         try:
             async with session.get(url, params=param) as response:
                 response.raise_for_status()
                 
-                async with aiofiles.open(f"{save_dir}/{filename}", 'wb') as f:
+                async with aiofiles.open(f"{filepath}", 'wb') as f:
                     async for chunk in response.content.iter_chunked(8192):
                         await f.write(chunk)
             
-            self.logger.info(f"[DONE]download: {filename}")
+            self.logger.info(f"[DONE] download [{filepath}]")
         
+            return True
+
         except aiohttp.ClientError as e:
-            self.logger.error(f"error while downloading [{filename}]: {e}")
+            self.logger.error(f"error while downloading [{filepath}]: {e}")
+            return False
         except IOError as e:
-            self.logger.error(f"error while file writing [{filename}]: {e}")
+            self.logger.error(f"error while file writing [{filepath}]: {e}")
+            return False
+
+    
+    # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
+    # async def download_(self, session: aiohttp.ClientSession, url: str, doctype: DocType, param: dict, save_dir: str, results: Results):
+
+    #     os.makedirs(save_dir, exist_ok=True)
+
+    #     save_path = f"{save_dir}/{doctype}" # "# {docid}__{t.doctype}.zip"
+
+    #     try:
+    #         async with session.get(url, params=param) as response:
+    #             response.raise_for_status()
+                
+    #             async with aiofiles.open(f"{save_path}", 'wb') as f:
+    #                 async for chunk in response.content.iter_chunked(8192):
+    #                     await f.write(chunk)
+            
+    #         self.logger.info(f"[DONE]download: {doctype}")
+        
+    #         return save_path
+
+    #     except aiohttp.ClientError as e:
+    #         self.logger.error(f"error while downloading [{doctype}]: {e}")
+    #     except IOError as e:
+    #         self.logger.error(f"error while file writing [{doctype}]: {e}")

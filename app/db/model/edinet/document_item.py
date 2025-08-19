@@ -7,7 +7,8 @@ from common.main.lib.utils import Utils
 from db.model.edinet.edinet_enums import DisclosureStatus, RegalStatus
 
 
-@dataclass
+
+@dataclass(frozen=True)
 class Results:
     JCN: Optional[str] = None  # (*1)
     currentReportReason: Optional[str] = None  # (*4) - comma-separated if multiple
@@ -38,14 +39,12 @@ class Results:
     englishDocFlag: str = None
     pdfFlag: str = None
     xbrlFlag: str = None
+
     logger = logging.getLogger(__name__)
 
 
     def has_submitdatetime(self):
         return bool(self.submitDateTime)
-
-    # def has_edinetcode(self):
-    #     return bool(self.edinetCode)
 
     def has_pdf(self) -> bool:
         return Utils.broad_enable(self.pdfFlag)
@@ -99,3 +98,17 @@ class Results:
         """submitDateTimeが存在しないなら、受け取った日付(APIリクエスト日を想定)を埋めて返す"""
         if not bool(self.edinetCode):
             self.edinetCode = text
+
+@dataclass
+class FileInfo:
+    filepath: str = None
+    cloudpath: str = None
+
+class DbItem(Results):
+    xbrl_info: FileInfo = None # "1"
+    pdf_info: FileInfo = None # "2"
+    attached_info: FileInfo = None # "3"
+    english_info: FileInfo = None # "4"
+    csv_info: FileInfo = None # "5"
+    
+

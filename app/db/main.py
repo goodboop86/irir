@@ -43,15 +43,15 @@ async def run():
         type="2", api_key=apikey, yyyymmdd=yyyymmdd
     ).execute()
 
-    items: list[Results] = GetItemsFromDocumentListReaponse(
+    results: list[Results] = GetItemsFromDocumentListReaponse(
         document_list_response=documentlist
     ).execute()
 
-    await DownloadDocumentFromEdiNetApi(api_key=apikey, results=items, work_dir="download").execute()
+    save_pathes: list[str] = await DownloadDocumentFromEdiNetApi(api_key=apikey, results=results, work_dir="download").execute()
 
 
     InsertItemsToDynamoDb(
-        session=session, items=items, target_table=target_table
+        session=session, items=results, target_table=target_table
     ).execute()
 
 
