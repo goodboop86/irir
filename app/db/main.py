@@ -23,6 +23,7 @@ async def run():
     key_name = "EDINET_API_KEY"
     region_name = "ap-northeast-1"
     yyyymmdd = "2023-08-28"
+    work_dir="edinet-document"
     # target_table = "edinet-document_list-api"
 
     session = CreateAwsSession(profile_name=profile).execute()
@@ -43,10 +44,10 @@ async def run():
     ).execute()
 
     db_items: list[DbItem] = await DownloadDocumentFromEdiNetApi(
-        api_key=apikey, documentlist=documentlist, work_dir="edinet-document"
+        api_key=apikey, documentlist=documentlist, work_dir=work_dir
     ).execute()
 
-    await UploadToAwsS3(
+    db_items: list[DbItem] = await UploadToAwsS3(
         aws_session=session, db_items=db_items, region_name=region_name
     ).execute()
 

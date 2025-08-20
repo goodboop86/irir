@@ -204,10 +204,9 @@ class UploadToAwsS3(Strategy):
 
     @override
     @Utils.log_exception
-    async def execute(self):
+    async def execute(self) -> list[DbItem]:
         tasks = [self.upload(item) for item in self.db_items]
-        db_items: list[DbItem] = await asyncio.gather(*tasks)
-        return db_items
+        return await asyncio.gather(*tasks)
 
     @override
     @Utils.exception
