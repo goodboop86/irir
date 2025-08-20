@@ -97,47 +97,6 @@ class GetItemsFromDocumentListReaponse(Strategy):
         return self.document_list_response.create_valid_result_items()
 
 
-@dataclass
-class InsertItemsToDynamoDb(Strategy):
-    session: Session
-    items: list[Results]
-    target_table: str
-
-    def __post_init__(self):
-        resource = self.session.resource("dynamodb")
-        self.table = resource.Table(self.target_table)
-
-    @override
-    @Utils.trace # This is a synchronous method
-    # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1)) # Retry might need async version for async methods
-    def execute(self):
-        resource = self.session.resource("dynamodb")
-        table = resource.Table(self.target_table)
-        for item in self.items:
-            if not self.doc_id_exists(gsi_name="docID-index", target=item.docID):
-                self.insert(table, asdict(item))
-            else:
-                self.logger.info(f"[SKIP]{item.docID} is already exists.")
-    
-    def doc_id_exists(self, gsi_name, target):
-        """
-        指定されたdocIDがGSIに存在するかを確認する。
-        """
-        try:
-            response = self.table.query(
-                IndexName=gsi_name,
-                KeyConditionExpression=Key('docID').eq(target),
-                ProjectionExpression='docID'
-            )
-            return len(response['Items']) > 0
-        except ClientError as e:
-            print(f"クエリ中にエラーが発生しました: {e.response['Error']['Message']}")
-            return False
-
-    @Utils.trace # This is a synchronous method
-    def insert(self, table, item):
-        table.put_item(Item=item)
-
 
 @dataclass
 class DownloadDocumentFromEdiNetApi(Strategy):
@@ -173,31 +132,31 @@ class DownloadDocumentFromEdiNetApi(Strategy):
 
         if db_item.has_xbrl():
             filepath: str = f"{save_dir}/{DocType.XBRL.name}.zip"
-            is_success = await self.savefile(session=session, url=url, param=param | {"type": "1"},filepath=filepath)
+            is_success = await self.save(session=session, url=url, param=param | {"type": "1"},filepath=filepath)
             if is_success:
                 db_item.xbrl_info = FileInfo(filepath=filepath)
         
         if db_item.has_pdf():
             filepath: str = f"{save_dir}/{DocType.PDF.name}.zip"
-            is_success = await self.savefile(session=session, url=url, param=param | {"type": "2"},filepath=filepath)
+            is_success = await self.save(session=session, url=url, param=param | {"type": "2"},filepath=filepath)
             if is_success:
                 db_item.pdf_info = FileInfo(filepath=filepath)
 
         if db_item.has_attachdoc():
             filepath: str = f"{save_dir}/{DocType.ATTACH.name}.zip"
-            is_success = await self.savefile(session=session, url=url, param=param | {"type": "4"},filepath=filepath)
+            is_success = await self.save(session=session, url=url, param=param | {"type": "4"},filepath=filepath)
             if is_success:
                 db_item.english_info = FileInfo(filepath=filepath)
         
         if db_item.has_englishdoc():
             filepath: str = f"{save_dir}/{DocType.ENGLISH.name}.zip"
-            is_success = await self.savefile(session=session, url=url, param=param | {"type": "4"},filepath=filepath)
+            is_success = await self.save(session=session, url=url, param=param | {"type": "4"},filepath=filepath)
             if is_success:
                 db_item.english_info = FileInfo(filepath=filepath)
         
         if db_item.has_csv():
             filepath: str = f"{save_dir}/{DocType.CSV.name}.zip"
-            is_success = await self.savefile(session=session, url=url, param=param | {"type": "5"},filepath=filepath)
+            is_success = await self.save(session=session, url=url, param=param | {"type": "5"},filepath=filepath)
             if is_success:
                 db_item.csv_info = FileInfo(filepath=filepath)
 
@@ -206,7 +165,7 @@ class DownloadDocumentFromEdiNetApi(Strategy):
 
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-    async def savefile(self, session: aiohttp.ClientSession, url: str, param: dict, filepath: str) -> bool:
+    async def save(self, session: aiohttp.ClientSession, url: str, param: dict, filepath: str) -> bool:
 
         try:
             async with session.get(url, params=param) as response:
@@ -228,26 +187,109 @@ class DownloadDocumentFromEdiNetApi(Strategy):
             return False
 
     
-    # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-    # async def download_(self, session: aiohttp.ClientSession, url: str, doctype: DocType, param: dict, save_dir: str, results: Results):
 
-    #     os.makedirs(save_dir, exist_ok=True)
+@dataclass
+class UploadToAwsS3(Strategy):
+    aws_session: Session
+    db_items: list[DbItem]
+    region_name: str
+    bucket_name: str
+    s3: any = None
 
-    #     save_path = f"{save_dir}/{doctype}" # "# {docid}__{t.doctype}.zip"
+    def __post_init__(self):
+        resource = self.aws_session.resource("s3")
+        self.s3 = resource.Table(self.bucket_name)
 
-    #     try:
-    #         async with session.get(url, params=param) as response:
-    #             response.raise_for_status()
-                
-    #             async with aiofiles.open(f"{save_path}", 'wb') as f:
-    #                 async for chunk in response.content.iter_chunked(8192):
-    #                     await f.write(chunk)
-            
-    #         self.logger.info(f"[DONE]download: {doctype}")
+    @override
+    @Utils.trace
+    async def execute(self):
+
+         async with aiohttp.ClientSession() as session:
+            tasks = [self.upload(session, item) for item in self.db_items]
+            db_items: list[DbItem] = await asyncio.gather(*tasks)
+            return db_items
+
+
+    
+    @override
+    @Utils.trace
+    async def upload(self, session, item: DbItem):     
         
-    #         return save_path
+        bucket_name = self.bucket_name
 
-    #     except aiohttp.ClientError as e:
-    #         self.logger.error(f"error while downloading [{doctype}]: {e}")
-    #     except IOError as e:
-    #         self.logger.error(f"error while file writing [{doctype}]: {e}")
+        for info in item.get_infolist():
+            if info.filepath:
+                key = info.filepath
+                is_success = await self.save(bucket_name=bucket_name, key=key)
+                if is_success:
+                    info.cloudpath = f"https://{bucket_name}.s3.{self.region_name}.amazonaws.com/{key}" 
+        
+        return item
+                    
+            
+    @override
+    @Utils.trace
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
+    async def save(self, bucket_name, key):
+        try:
+            self.bucket.put_object(
+                Bucket=bucket_name,
+                Key=key,
+                # Body=response.content # ダウンロードしたコンテンツをアップロード
+            )
+            
+            self.logger.info("Upload successful.")
+            return True
+            
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Failed to download data: {e}")
+            return False
+        except boto3.exceptions.S3TransferFailedError as e:
+            self.logger.error(f"Failed to upload to S3: {e}")
+            return False
+        except Exception as e:
+            self.logger.error(f"An unexpected error occurred: {e}")
+            return False
+
+
+    
+@dataclass
+class InsertItemsToDynamoDb(Strategy):
+    aws_session: Session
+    items: list[Results]
+    target_table: str
+
+    def __post_init__(self):
+        resource = self.aws_session.resource("dynamodb")
+        self.table = resource.Table(self.target_table)
+
+    @override
+    @Utils.trace # This is a synchronous method
+    # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1)) # Retry might need async version for async methods
+    def execute(self):
+        resource = self.aws_session.resource("dynamodb")
+        table = resource.Table(self.target_table)
+        for item in self.items:
+            if not self.doc_id_exists(gsi_name="docID-index", target=item.docID):
+                self.insert(table, asdict(item))
+            else:
+                self.logger.info(f"[SKIP]{item.docID} is already exists.")
+    
+    def doc_id_exists(self, gsi_name, target):
+        """
+        指定されたdocIDがGSIに存在するかを確認する。
+        """
+        try:
+            response = self.table.query(
+                IndexName=gsi_name,
+                KeyConditionExpression=Key('docID').eq(target),
+                ProjectionExpression='docID'
+            )
+            return len(response['Items']) > 0
+        except ClientError as e:
+            print(f"クエリ中にエラーが発生しました: {e.response['Error']['Message']}")
+            return False
+
+    @Utils.trace # This is a synchronous method
+    def insert(self, table, item):
+        table.put_item(Item=item)

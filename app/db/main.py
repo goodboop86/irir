@@ -4,7 +4,7 @@ import json
 from pprint import pprint
 import boto3
 
-from db.model.edinet.document_item import Results
+from db.model.edinet.document_item import DbItem, Results
 from db.model.edinet.document_list_response_type2 import DocumentListResponseType2
 from db.strategy.strategy import (
     CreateAwsSession,
@@ -47,11 +47,13 @@ async def run():
         document_list_response=documentlist
     ).execute()
 
-    save_pathes: list[str] = await DownloadDocumentFromEdiNetApi(api_key=apikey, results=results, work_dir="download").execute()
+    db_items: list[DbItem] = await DownloadDocumentFromEdiNetApi(api_key=apikey, results=results, work_dir="download").execute()
+
+
 
 
     InsertItemsToDynamoDb(
-        session=session, items=results, target_table=target_table
+        aws_session=session, items=results, target_table=target_table
     ).execute()
 
 

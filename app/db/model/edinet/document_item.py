@@ -107,8 +107,11 @@ class FileInfo:
 class DbItem(Results):
     xbrl_info: FileInfo = None # "1"
     pdf_info: FileInfo = None # "2"
-    attached_info: FileInfo = None # "3"
+    attach_info: FileInfo = None # "3"
     english_info: FileInfo = None # "4"
     csv_info: FileInfo = None # "5"
+
+    def get_infolist(self):
+        return [self.xbrl_info,self.pdf_info,self.attach_info,self.english_info,self.csv_info]
     
 
