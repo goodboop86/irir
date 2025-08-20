@@ -56,18 +56,15 @@ class Results:
             except ValueError as e:
                 self.logger.error(f"Error parsing date string: {e}")
 
-
-        in_fmt = "%Y-%m-%d %H:%M"
-        out_fmt = "%Y%m%dT%H%M"
         try:
             if self.submitDateTime:
-                self.submitDateTime = refmt_dt(dtstr=self.submitDateTime, in_fmt=in_fmt, out_fmt=out_fmt)
+                self.submitDateTime = refmt_dt(dtstr=self.submitDateTime, in_fmt="%Y-%m-%d %H:%M", out_fmt="%Y%m%dT%H%M")
             if self.periodStart:
-                self.periodStart = refmt_dt(dtstr=self.periodStart, in_fmt=in_fmt, out_fmt=out_fmt)
+                self.periodStart = refmt_dt(dtstr=self.periodStart, in_fmt="%Y-%m-%d", out_fmt="%Y%m%d")
             if self.periodEnd:
-                self.periodEnd = refmt_dt(dtstr=self.periodEnd, in_fmt=in_fmt, out_fmt=out_fmt)
+                self.periodEnd = refmt_dt(dtstr=self.periodEnd, in_fmt="%Y-%m-%d", out_fmt="%Y%m%d")
             if self.opeDateTime:
-                self.opeDateTime = refmt_dt(dtstr=self.opeDateTime, in_fmt=in_fmt, out_fmt=out_fmt)
+                self.opeDateTime = refmt_dt(dtstr=self.opeDateTime, in_fmt="%Y-%m-%d %H:%M", out_fmt="%Y%m%dT%H%M")
         except ValueError as e:
             self.logger.error(f"Error parsing date string: {e}")
             return None

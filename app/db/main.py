@@ -13,6 +13,7 @@ from db.strategy.strategy import (
     GetDocumentListFromEdiNetApi,
     GetItemsFromDocumentListReaponse,
     InsertItemsToDynamoDb,
+    UploadToAwsS3,
 )
 
 
@@ -47,8 +48,10 @@ async def run():
     ).execute()
 
     db_items: list[DbItem] = await DownloadDocumentFromEdiNetApi(
-        api_key=apikey, documentlist=documentlist, work_dir="edinet_document"
+        api_key=apikey, documentlist=documentlist, work_dir="edinet-document"
     ).execute()
+
+    await UploadToAwsS3(bucket=session.resource("s3").Bucket("edinet-document"), db_items=db_items, region_name=region_name).execute()
 
     # InsertItemsToDynamoDb(
     #     aws_session=session, items=results, target_table=target_table

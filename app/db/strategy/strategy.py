@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from pprint import pprint
-from typing import List, Optional, override
+from typing import Any, List, Optional, override
 import boto3
 from botocore.exceptions import ClientError
 import asyncio
@@ -110,7 +110,7 @@ class DownloadDocumentFromEdiNetApi(Strategy):
     async def execute(self):
 
         async with aiohttp.ClientSession() as session:
-            tasks = [self.download(session, result) for result in self.documentlist.results]
+            tasks = [self.download(session, result) for result in self.documentlist.results[:10]]
             db_items: list[DbItem] = await asyncio.gather(*tasks)
             return db_items
 
@@ -197,63 +197,48 @@ class DownloadDocumentFromEdiNetApi(Strategy):
 
 @dataclass
 class UploadToAwsS3(Strategy):
-    aws_session: Session
+    bucket: Any # Bucket
     db_items: list[DbItem]
     region_name: str
-    bucket_name: str
-    s3: any = None
-
-    def __post_init__(self):
-        resource = self.aws_session.resource("s3")
-        self.s3 = resource.Table(self.bucket_name)
 
     @override
     @Utils.trace
     async def execute(self):
-
-        async with aiohttp.ClientSession() as session:
-            tasks = [self.upload(session, item) for item in self.db_items]
-            db_items: list[DbItem] = await asyncio.gather(*tasks)
-            return db_items
+        tasks = [self.upload(item) for item in self.db_items]
+        db_items: list[DbItem] = await asyncio.gather(*tasks)
+        return db_items
 
     @override
     @Utils.trace
-    async def upload(self, session, item: DbItem):
-
-        bucket_name = self.bucket_name
+    async def upload(self, item: DbItem):
 
         for info in item.get_infolist():
             if info.filepath:
                 key = info.filepath
-                is_success = await self.save(bucket_name=bucket_name, key=key)
-                if is_success:
-                    info.cloudpath = f"https://{bucket_name}.s3.{self.region_name}.amazonaws.com/{key}"
+                try:
+                    async with aiofiles.open(info.filepath, 'rb') as f:
+                        file_content = await f.read()
+                    is_success = await self.save(key=key, file_content=file_content)
+                    if is_success:
+                        info.cloudpath = f"https://{self.bucket.name}.s3.{self.region_name}.amazonaws.com/{key}"
+                except Exception as e:
+                    self.logger.error(f"Error processing file {info.filepath}: {e}")
 
         return item
 
     @override
     @Utils.trace
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-    async def save(self, bucket_name, key):
+    async def save(self, key: str, file_content: bytes):
         try:
-            self.bucket.put_object(
-                Bucket=bucket_name,
-                Key=key,
-                # Body=response.content # ダウンロードしたコンテンツをアップロード
-            )
+            await asyncio.to_thread(self.bucket.put_object, Key=key, Body=file_content)
 
             self.logger.info("Upload successful.")
             return True
 
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Failed to download data: {e}")
-            return False
-        except boto3.exceptions.S3TransferFailedError as e:
-            self.logger.error(f"Failed to upload to S3: {e}")
-            return False
         except Exception as e:
             self.logger.error(f"An unexpected error occurred: {e}")
-            return False
+            raise
 
 
 @dataclass
