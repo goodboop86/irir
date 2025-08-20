@@ -1,11 +1,13 @@
 from enum import Enum
 
+
 class DocType(Enum):
     XBRL = "XBRL"
     PDF = "PDF"
     ATTACH = "ATTACHED"
     ENGLISH = "ENGLISH"
     CSV = "CSV"
+
 
 class RegalStatus(Enum):
     """

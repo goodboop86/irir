@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 import logging
 from pprint import pprint
 from typing import Optional
@@ -7,8 +8,7 @@ from common.main.lib.utils import Utils
 from db.model.edinet.edinet_enums import DisclosureStatus, RegalStatus
 
 
-
-@dataclass(frozen=True)
+@dataclass
 class Results:
     JCN: Optional[str] = None  # (*1)
     currentReportReason: Optional[str] = None  # (*4) - comma-separated if multiple
@@ -42,6 +42,36 @@ class Results:
 
     logger = logging.getLogger(__name__)
 
+    def __post_init__(self):
+        def refmt_dt(dtstr: str, in_fmt, out_fmt):
+            try:
+                dt_obj = datetime.strptime(dtstr, out_fmt)
+                return dtstr
+            except :
+                pass
+            
+            try: 
+                dt_obj = datetime.strptime(dtstr, in_fmt)
+                return dt_obj.strftime(out_fmt)
+            except ValueError as e:
+                self.logger.error(f"Error parsing date string: {e}")
+
+
+        in_fmt = "%Y-%m-%d %H:%M"
+        out_fmt = "%Y%m%dT%H%M"
+        try:
+            if self.submitDateTime:
+                self.submitDateTime = refmt_dt(dtstr=self.submitDateTime, in_fmt=in_fmt, out_fmt=out_fmt)
+            if self.periodStart:
+                self.periodStart = refmt_dt(dtstr=self.periodStart, in_fmt=in_fmt, out_fmt=out_fmt)
+            if self.periodEnd:
+                self.periodEnd = refmt_dt(dtstr=self.periodEnd, in_fmt=in_fmt, out_fmt=out_fmt)
+            if self.opeDateTime:
+                self.opeDateTime = refmt_dt(dtstr=self.opeDateTime, in_fmt=in_fmt, out_fmt=out_fmt)
+        except ValueError as e:
+            self.logger.error(f"Error parsing date string: {e}")
+            return None
+
 
     def has_submitdatetime(self):
         return bool(self.submitDateTime)
@@ -67,19 +97,27 @@ class Results:
         if not is_viewable:
             self.logger.info(f"[SKIP] {self.docID} is not viewable.")
         return is_viewable
-    
+
     def has_anyitem(self) -> RegalStatus:
-        has_anyitem = any([self.has_pdf(), self.has_csv(), self.has_xbrl(), self.has_attachdoc(), self.has_englishdoc()])
+        has_anyitem = any(
+            [
+                self.has_pdf(),
+                self.has_csv(),
+                self.has_xbrl(),
+                self.has_attachdoc(),
+                self.has_englishdoc(),
+            ]
+        )
         if not has_anyitem:
             self.logger.info(f"[SKIP] {self.docID} does'nt have enough information.")
         return has_anyitem
-    
+
     def has_edinetcode(self) -> RegalStatus:
         has_edinetcode = bool(self.edinetCode)
         if not has_edinetcode:
             self.logger.info(f"[SKIP] {self.docID} does'nt have edinet-code.")
         return has_edinetcode
-    
+
     def get_disclosurestatus(self) -> DisclosureStatus:
         return DisclosureStatus.from_string(self.legalStatus)
 
@@ -99,19 +137,25 @@ class Results:
         if not bool(self.edinetCode):
             self.edinetCode = text
 
+
 @dataclass
 class FileInfo:
     filepath: str = None
     cloudpath: str = None
 
+
 class DbItem(Results):
-    xbrl_info: FileInfo = None # "1"
-    pdf_info: FileInfo = None # "2"
-    attach_info: FileInfo = None # "3"
-    english_info: FileInfo = None # "4"
-    csv_info: FileInfo = None # "5"
+    xbrl_info: FileInfo = None  # "1"
+    pdf_info: FileInfo = None  # "2"
+    attach_info: FileInfo = None  # "3"
+    english_info: FileInfo = None  # "4"
+    csv_info: FileInfo = None  # "5"
 
     def get_infolist(self):
-        return [self.xbrl_info,self.pdf_info,self.attach_info,self.english_info,self.csv_info]
-    
-
+        return [
+            self.xbrl_info,
+            self.pdf_info,
+            self.attach_info,
+            self.english_info,
+            self.csv_info,
+        ]

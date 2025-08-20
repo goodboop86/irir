@@ -23,12 +23,11 @@ from db.strategy.strategy import (
 async def run():
 
     profile = "gb86sub"
-    secret_name="EdinetApiKey"
-    key_name="EDINET_API_KEY"
-    region_name="ap-northeast-1"
-    yyyymmdd="2023-08-28"
-    target_table="edinet-document_list-api"
-    
+    secret_name = "EdinetApiKey"
+    key_name = "EDINET_API_KEY"
+    region_name = "ap-northeast-1"
+    yyyymmdd = "2023-08-28"
+    target_table = "edinet-document_list-api"
 
     session = CreateAwsSession(profile_name=profile).execute()
 
@@ -39,24 +38,21 @@ async def run():
         region_name=region_name,
     ).execute()
 
-    documentlist = GetDocumentListFromEdiNetApi(
+    documentlist: DocumentListResponseType2 = GetDocumentListFromEdiNetApi(
         type="2", api_key=apikey, yyyymmdd=yyyymmdd
     ).execute()
 
-    results: list[Results] = GetItemsFromDocumentListReaponse(
+    documentlist: DocumentListResponseType2 = GetItemsFromDocumentListReaponse(
         document_list_response=documentlist
     ).execute()
 
-    db_items: list[DbItem] = await DownloadDocumentFromEdiNetApi(api_key=apikey, results=results, work_dir="download").execute()
-
-
-
-
-    InsertItemsToDynamoDb(
-        aws_session=session, items=results, target_table=target_table
+    db_items: list[DbItem] = await DownloadDocumentFromEdiNetApi(
+        api_key=apikey, documentlist=documentlist, work_dir="edinet_document"
     ).execute()
 
-
+    # InsertItemsToDynamoDb(
+    #     aws_session=session, items=results, target_table=target_table
+    # ).execute()
 
     # pprint(items)
 
