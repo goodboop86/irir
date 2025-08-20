@@ -47,10 +47,10 @@ class Results:
             try:
                 dt_obj = datetime.strptime(dtstr, out_fmt)
                 return dtstr
-            except :
+            except:
                 pass
-            
-            try: 
+
+            try:
                 dt_obj = datetime.strptime(dtstr, in_fmt)
                 return dt_obj.strftime(out_fmt)
             except ValueError as e:
@@ -58,17 +58,28 @@ class Results:
 
         try:
             if self.submitDateTime:
-                self.submitDateTime = refmt_dt(dtstr=self.submitDateTime, in_fmt="%Y-%m-%d %H:%M", out_fmt="%Y%m%dT%H%M")
+                self.submitDateTime = refmt_dt(
+                    dtstr=self.submitDateTime,
+                    in_fmt="%Y-%m-%d %H:%M",
+                    out_fmt="%Y%m%dT%H%M",
+                )
             if self.periodStart:
-                self.periodStart = refmt_dt(dtstr=self.periodStart, in_fmt="%Y-%m-%d", out_fmt="%Y%m%d")
+                self.periodStart = refmt_dt(
+                    dtstr=self.periodStart, in_fmt="%Y-%m-%d", out_fmt="%Y%m%d"
+                )
             if self.periodEnd:
-                self.periodEnd = refmt_dt(dtstr=self.periodEnd, in_fmt="%Y-%m-%d", out_fmt="%Y%m%d")
+                self.periodEnd = refmt_dt(
+                    dtstr=self.periodEnd, in_fmt="%Y-%m-%d", out_fmt="%Y%m%d"
+                )
             if self.opeDateTime:
-                self.opeDateTime = refmt_dt(dtstr=self.opeDateTime, in_fmt="%Y-%m-%d %H:%M", out_fmt="%Y%m%dT%H%M")
+                self.opeDateTime = refmt_dt(
+                    dtstr=self.opeDateTime,
+                    in_fmt="%Y-%m-%d %H:%M",
+                    out_fmt="%Y%m%dT%H%M",
+                )
         except ValueError as e:
             self.logger.error(f"Error parsing date string: {e}")
             return None
-
 
     def has_submitdatetime(self):
         return bool(self.submitDateTime)
@@ -149,10 +160,12 @@ class DbItem(Results):
     csv_info: FileInfo = None  # "5"
 
     def get_infolist(self):
-        return [
+
+        target = [
             self.xbrl_info,
             self.pdf_info,
             self.attach_info,
             self.english_info,
             self.csv_info,
         ]
+        return list(filter(lambda item: item is not None, target))

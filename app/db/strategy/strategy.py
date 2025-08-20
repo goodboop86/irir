@@ -98,6 +98,7 @@ class GetItemsFromDocumentListReaponse(Strategy):
         self.document_list_response.filter_valid_result_items()
         return self.document_list_response
 
+
 @dataclass
 class DownloadDocumentFromEdiNetApi(Strategy):
     api_key: str
@@ -110,7 +111,10 @@ class DownloadDocumentFromEdiNetApi(Strategy):
     async def execute(self):
 
         async with aiohttp.ClientSession() as session:
-            tasks = [self.download(session, result) for result in self.documentlist.results[:10]]
+            tasks = [
+                self.download(session, result)
+                for result in self.documentlist.results[:10]
+            ]
             db_items: list[DbItem] = await asyncio.gather(*tasks)
             return db_items
 
@@ -197,9 +201,14 @@ class DownloadDocumentFromEdiNetApi(Strategy):
 
 @dataclass
 class UploadToAwsS3(Strategy):
-    bucket: Any # Bucket
+    aws_session: Session
     db_items: list[DbItem]
     region_name: str
+    buclet = None
+
+    def __post_init__(self):
+        resource = self.aws_session.resource("s3")
+        self.bucket = resource.Bucket("irir-project")
 
     @override
     @Utils.trace
@@ -216,7 +225,7 @@ class UploadToAwsS3(Strategy):
             if info.filepath:
                 key = info.filepath
                 try:
-                    async with aiofiles.open(info.filepath, 'rb') as f:
+                    async with aiofiles.open(info.filepath, "rb") as f:
                         file_content = await f.read()
                     is_success = await self.save(key=key, file_content=file_content)
                     if is_success:

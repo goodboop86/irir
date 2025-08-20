@@ -51,7 +51,9 @@ async def run():
         api_key=apikey, documentlist=documentlist, work_dir="edinet-document"
     ).execute()
 
-    await UploadToAwsS3(bucket=session.resource("s3").Bucket("edinet-document"), db_items=db_items, region_name=region_name).execute()
+    await UploadToAwsS3(
+        aws_session=session, db_items=db_items, region_name=region_name
+    ).execute()
 
     # InsertItemsToDynamoDb(
     #     aws_session=session, items=results, target_table=target_table

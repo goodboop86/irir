@@ -28,10 +28,18 @@ class DocumentListResponseType2:
     def filter_valid_result_items(self) -> list[Results]:
         try:
             yyyymmdd = self.metadata.parameter.date
-            self.results = list(filter(lambda result: result.is_viewable(), self.results))
-            self.results = list(filter(lambda result: result.has_edinetcode(), self.results))
-            self.results = list(filter(lambda result: result.has_anyitem(), self.results))
-            self.results = [result.preprocess(yyyymmdd=yyyymmdd) for result in self.results]
+            self.results = list(
+                filter(lambda result: result.is_viewable(), self.results)
+            )
+            self.results = list(
+                filter(lambda result: result.has_edinetcode(), self.results)
+            )
+            self.results = list(
+                filter(lambda result: result.has_anyitem(), self.results)
+            )
+            self.results = [
+                result.preprocess(yyyymmdd=yyyymmdd) for result in self.results
+            ]
         except Exception as e:
             print(f"{e}")
             raise
