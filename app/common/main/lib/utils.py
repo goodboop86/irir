@@ -19,7 +19,7 @@ class Utils:
 
     # --- Async trace decorator ---
     @staticmethod
-    def async_trace(func):
+    def async_log_exception(func):
         """
         非同期メソッドの呼び出しとその完了をログに記録するデコレータ。
         """
@@ -53,17 +53,15 @@ class Utils:
 
     # --- Combined trace decorator ---
     @classmethod
-    def trace(cls, func):
+    def log_exception(cls, func):
         """
         同期関数または非同期関数をトレースするデコレータ。
         """
         if inspect.iscoroutinefunction(func):
-            return cls.async_trace(func)
+            return cls.async_log_exception(func)
         else:
-            # Define the synchronous wrapper here
             @wraps(func)
             def sync_wrapper(*args, **kwargs):
-                # クラス名とメソッド名を取得
                 class_name = (
                     args[0].__class__.__name__
                     if args and hasattr(args[0], "__class__")
@@ -86,3 +84,65 @@ class Utils:
                     raise
 
             return sync_wrapper
+        
+
+    # --- Async trace decorator ---
+    @staticmethod
+    def async_exception(func):
+        """
+        非同期メソッドの呼び出しとその完了をログに記録するデコレータ。
+        """
+
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # クラス名とメソッド名を取得
+            # Check if args[0] is an instance of a class before accessing __class__
+            class_name = (
+                args[0].__class__.__name__
+                if args and hasattr(args[0], "__class__")
+                else "Function"
+            )
+            method_name = func.__name__
+
+
+            try:
+                result = await func(*args, **kwargs)
+                return result
+            except Exception as e:
+                Utils.logger.error(
+                    f"Async Method '{class_name}.{method_name}' failed with error: {e}"
+                )
+                raise
+
+        return wrapper
+
+    # --- Combined trace decorator ---
+    @classmethod
+    def exception(cls, func):
+        """
+        同期関数または非同期関数をトレースするデコレータ。
+        """
+        if inspect.iscoroutinefunction(func):
+            return cls.async_exception(func)
+        else:
+            @wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                class_name = (
+                    args[0].__class__.__name__
+                    if args and hasattr(args[0], "__class__")
+                    else "Function"
+                )
+                method_name = func.__name__
+
+
+                try:
+                    result = func(*args, **kwargs)
+                    return result
+                except Exception as e:
+                    Utils.logger.error(
+                        f"Method '{class_name}.{method_name}' failed with error: {e}"
+                    )
+                    raise
+
+            return sync_wrapper
+

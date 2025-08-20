@@ -35,7 +35,7 @@ class CreateAwsSession(Strategy):
     profile_name: str
 
     @override
-    @Utils.trace
+    @Utils.log_exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
         return boto3.Session(profile_name=self.profile_name)
@@ -49,7 +49,7 @@ class GetApiKeyFromAws(Strategy):
     region_name: str
 
     @override
-    @Utils.trace
+    @Utils.log_exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
         # Create a Secrets Manager client
@@ -74,7 +74,7 @@ class GetDocumentListFromEdiNetApi(Strategy):
     endpoint: str = "https://api.edinet-fsa.go.jp/api/v2/documents.json"
 
     @override
-    @Utils.trace
+    @Utils.log_exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
         params = {
@@ -92,7 +92,7 @@ class GetItemsFromDocumentListReaponse(Strategy):
     document_list_response: DocumentListResponseType2
 
     @override
-    @Utils.trace
+    @Utils.log_exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self) -> list[Results]:
         self.document_list_response.filter_valid_result_items()
@@ -107,7 +107,7 @@ class DownloadDocumentFromEdiNetApi(Strategy):
     endpoint: str = "https://api.edinet-fsa.go.jp/api/v2/documents/"
 
     @override
-    @Utils.trace
+    @Utils.log_exception
     async def execute(self):
 
         async with aiohttp.ClientSession() as session:
@@ -211,14 +211,14 @@ class UploadToAwsS3(Strategy):
         self.bucket = resource.Bucket("irir-project")
 
     @override
-    @Utils.trace
+    @Utils.log_exception
     async def execute(self):
         tasks = [self.upload(item) for item in self.db_items]
         db_items: list[DbItem] = await asyncio.gather(*tasks)
         return db_items
 
     @override
-    @Utils.trace
+    @Utils.exception
     async def upload(self, item: DbItem):
 
         for info in item.get_infolist():
@@ -236,18 +236,13 @@ class UploadToAwsS3(Strategy):
         return item
 
     @override
-    @Utils.trace
+    @Utils.exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     async def save(self, key: str, file_content: bytes):
-        try:
-            await asyncio.to_thread(self.bucket.put_object, Key=key, Body=file_content)
+        await asyncio.to_thread(self.bucket.put_object, Key=key, Body=file_content)
 
-            self.logger.info("Upload successful.")
-            return True
-
-        except Exception as e:
-            self.logger.error(f"An unexpected error occurred: {e}")
-            raise
+        self.logger.info("Upload successful.")
+        return True
 
 
 @dataclass
@@ -261,8 +256,7 @@ class InsertItemsToDynamoDb(Strategy):
         self.table = resource.Table(self.target_table)
 
     @override
-    @Utils.trace  # This is a synchronous method
-    # @retry(stop=stop_after_attempt(3), wait=wait_fixed(1)) # Retry might need async version for async methods
+    @Utils.log_exception
     def execute(self):
         resource = self.aws_session.resource("dynamodb")
         table = resource.Table(self.target_table)
@@ -272,6 +266,8 @@ class InsertItemsToDynamoDb(Strategy):
             else:
                 self.logger.info(f"[SKIP]{item.docID} is already exists.")
 
+    @Utils.exception
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def doc_id_exists(self, gsi_name, target):
         """
         指定されたdocIDがGSIに存在するかを確認する。
@@ -287,6 +283,7 @@ class InsertItemsToDynamoDb(Strategy):
             print(f"クエリ中にエラーが発生しました: {e.response['Error']['Message']}")
             return False
 
-    @Utils.trace  # This is a synchronous method
+    @Utils.exception
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def insert(self, table, item):
         table.put_item(Item=item)
