@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 import logging
-from pprint import pprint
 from typing import Optional
 
 from common.main.lib.utils import Utils
@@ -47,7 +46,7 @@ class Results:
             try:
                 dt_obj = datetime.strptime(dtstr, out_fmt)
                 return dtstr
-            except:
+            except ValueError:
                 pass
 
             try:

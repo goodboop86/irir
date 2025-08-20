@@ -1,7 +1,6 @@
 import inspect
 import logging
 from functools import wraps
-import asyncio
 
 # ログ設定
 logging.basicConfig(
@@ -60,6 +59,7 @@ class Utils:
         if inspect.iscoroutinefunction(func):
             return cls.async_log_exception(func)
         else:
+
             @wraps(func)
             def sync_wrapper(*args, **kwargs):
                 class_name = (
@@ -84,7 +84,6 @@ class Utils:
                     raise
 
             return sync_wrapper
-        
 
     # --- Async trace decorator ---
     @staticmethod
@@ -103,7 +102,6 @@ class Utils:
                 else "Function"
             )
             method_name = func.__name__
-
 
             try:
                 result = await func(*args, **kwargs)
@@ -125,6 +123,7 @@ class Utils:
         if inspect.iscoroutinefunction(func):
             return cls.async_exception(func)
         else:
+
             @wraps(func)
             def sync_wrapper(*args, **kwargs):
                 class_name = (
@@ -133,7 +132,6 @@ class Utils:
                     else "Function"
                 )
                 method_name = func.__name__
-
 
                 try:
                     result = func(*args, **kwargs)
@@ -145,4 +143,3 @@ class Utils:
                     raise
 
             return sync_wrapper
-

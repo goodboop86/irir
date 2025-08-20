@@ -1,10 +1,9 @@
 from abc import abstractmethod
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 import json
 import logging
 import os
-from pprint import pprint
-from typing import Any, List, Optional, override
+from typing import override
 import boto3
 from botocore.exceptions import ClientError
 import asyncio
@@ -43,27 +42,30 @@ class CreateAwsSession(Strategy):
 
 @dataclass
 class GetApiKeyFromAws(Strategy):
-    session: Session
+    aws_session: Session
     secret_name: str
     key_name: str
     region_name: str
+    client = None
+
+    def __post_init__(self):
+        self.client = self.aws_session.client(
+            service_name="secretsmanager", region_name=self.region_name
+        )
 
     @override
     @Utils.log_exception
-    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
-        # Create a Secrets Manager client
-        client = self.session.client(
-            service_name="secretsmanager", region_name=self.region_name
-        )
-        try:
-            get_secret_value_response = client.get_secret_value(
-                SecretId=self.secret_name
-            )
-        except ClientError as e:
-            raise e
-        secret = get_secret_value_response["SecretString"]
+        secret = self.get_secret()
         return json.loads(secret)[self.key_name]
+
+    @Utils.exception
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
+    def get_secret(self):
+        get_secret_value_response = self.client.get_secret_value(
+            SecretId=self.secret_name
+        )
+        return get_secret_value_response["SecretString"]
 
 
 @dataclass
@@ -109,7 +111,6 @@ class DownloadDocumentFromEdiNetApi(Strategy):
     @override
     @Utils.log_exception
     async def execute(self):
-
         async with aiohttp.ClientSession() as session:
             tasks = [
                 self.download(session, result)
@@ -174,29 +175,20 @@ class DownloadDocumentFromEdiNetApi(Strategy):
 
         return db_item
 
+    @Utils.exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     async def save(
         self, session: aiohttp.ClientSession, url: str, param: dict, filepath: str
     ) -> bool:
+        async with session.get(url, params=param) as response:
+            response.raise_for_status()
+            async with aiofiles.open(f"{filepath}", "wb") as f:
+                async for chunk in response.content.iter_chunked(8192):
+                    await f.write(chunk)
 
-        try:
-            async with session.get(url, params=param) as response:
-                response.raise_for_status()
+        self.logger.info(f"[DONE] download [{filepath}]")
 
-                async with aiofiles.open(f"{filepath}", "wb") as f:
-                    async for chunk in response.content.iter_chunked(8192):
-                        await f.write(chunk)
-
-            self.logger.info(f"[DONE] download [{filepath}]")
-
-            return True
-
-        except aiohttp.ClientError as e:
-            self.logger.error(f"error while downloading [{filepath}]: {e}")
-            return False
-        except IOError as e:
-            self.logger.error(f"error while file writing [{filepath}]: {e}")
-            return False
+        return True
 
 
 @dataclass
@@ -223,7 +215,7 @@ class UploadToAwsS3(Strategy):
 
         for info in item.get_infolist():
             if info.filepath:
-                    await self.save(info=info)
+                await self.save(info=info)
         return item
 
     @override
@@ -232,8 +224,10 @@ class UploadToAwsS3(Strategy):
     async def save(self, info: FileInfo):
         async with aiofiles.open(info.filepath, "rb") as f:
             file_content = await f.read()
-        await asyncio.to_thread(self.bucket.put_object, Key=info.filepath, Body=file_content)
-        self.logger.info("Upload successful.")
+        await asyncio.to_thread(
+            self.bucket.put_object, Key=info.filepath, Body=file_content
+        )
+        self.logger.info(f"[DONE] download [{info.filepath}]")
         info.cloudpath = f"https://{self.bucket.name}.s3.{self.region_name}.amazonaws.com/{info.filepath}"
 
 

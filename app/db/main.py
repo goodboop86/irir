@@ -1,10 +1,6 @@
 import asyncio
-from dataclasses import asdict
-import json
-from pprint import pprint
-import boto3
 
-from db.model.edinet.document_item import DbItem, Results
+from db.model.edinet.document_item import DbItem
 from db.model.edinet.document_list_response_type2 import DocumentListResponseType2
 from db.strategy.strategy import (
     CreateAwsSession,
@@ -12,7 +8,6 @@ from db.strategy.strategy import (
     GetApiKeyFromAws,
     GetDocumentListFromEdiNetApi,
     GetItemsFromDocumentListReaponse,
-    InsertItemsToDynamoDb,
     UploadToAwsS3,
 )
 
@@ -28,12 +23,12 @@ async def run():
     key_name = "EDINET_API_KEY"
     region_name = "ap-northeast-1"
     yyyymmdd = "2023-08-28"
-    target_table = "edinet-document_list-api"
+    # target_table = "edinet-document_list-api"
 
     session = CreateAwsSession(profile_name=profile).execute()
 
     apikey = GetApiKeyFromAws(
-        session=session,
+        aws_session=session,
         secret_name=secret_name,
         key_name=key_name,
         region_name=region_name,
