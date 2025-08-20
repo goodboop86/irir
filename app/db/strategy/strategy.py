@@ -223,26 +223,18 @@ class UploadToAwsS3(Strategy):
 
         for info in item.get_infolist():
             if info.filepath:
-                key = info.filepath
-                try:
-                    async with aiofiles.open(info.filepath, "rb") as f:
-                        file_content = await f.read()
-                    is_success = await self.save(key=key, file_content=file_content)
-                    if is_success:
-                        info.cloudpath = f"https://{self.bucket.name}.s3.{self.region_name}.amazonaws.com/{key}"
-                except Exception as e:
-                    self.logger.error(f"Error processing file {info.filepath}: {e}")
-
+                    await self.save(info=info)
         return item
 
     @override
     @Utils.exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-    async def save(self, key: str, file_content: bytes):
-        await asyncio.to_thread(self.bucket.put_object, Key=key, Body=file_content)
-
+    async def save(self, info: FileInfo):
+        async with aiofiles.open(info.filepath, "rb") as f:
+            file_content = await f.read()
+        await asyncio.to_thread(self.bucket.put_object, Key=info.filepath, Body=file_content)
         self.logger.info("Upload successful.")
-        return True
+        info.cloudpath = f"https://{self.bucket.name}.s3.{self.region_name}.amazonaws.com/{info.filepath}"
 
 
 @dataclass
