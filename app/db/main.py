@@ -24,7 +24,7 @@ async def run():
     key_name = "EDINET_API_KEY"
     region_name = "ap-northeast-1"
     yyyymmdd = "2023-08-28"
-    work_dir="edinet-document"
+    work_dir = "edinet-document"
     target_table = "edinet-document_list-api"
 
     session = CreateAwsSession(profile_name=profile).execute()
@@ -55,8 +55,6 @@ async def run():
     InsertItemsToDynamoDb(
         aws_session=session, items=db_items, target_table=target_table
     ).execute()
-
-    # pprint(items)
 
 
 if __name__ == "__main__":

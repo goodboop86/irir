@@ -17,7 +17,6 @@ from common.main.lib.utils import Utils
 from db.model.edinet.document_item import DbItem, FileInfo, Results
 from db.model.edinet.document_list_response_type2 import DocumentListResponseType2
 from db.model.edinet.edinet_enums import DocType
-from boto3.dynamodb.conditions import Key
 
 
 @dataclass
@@ -227,13 +226,13 @@ class UploadToAwsS3(Strategy):
             self.bucket.put_object, Key=info.filepath, Body=file_content
         )
         self.logger.info(f"[DONE] upload [{info.filepath}]")
-        info.cloudpath = f"https://{self.bucket.name}.s3.{self.region_name}.amazonaws.com/{info.filepath}"
+        info.cloudpath = f"s3://{self.bucket.name}.s3.{self.region_name}.amazonaws.com/{info.filepath}"
 
 
 @dataclass
 class InsertItemsToDynamoDb(Strategy):
     aws_session: Session
-    items: list[Results]
+    items: list[DbItem]
     target_table: str
 
     def __post_init__(self):
@@ -243,33 +242,31 @@ class InsertItemsToDynamoDb(Strategy):
     @override
     @Utils.log_exception
     def execute(self):
-        resource = self.aws_session.resource("dynamodb")
-        table = resource.Table(self.target_table)
         for item in self.items:
-            if not self.doc_id_exists(gsi_name="docID-index", target=item.docID):
-                self.insert(table, asdict(item))
+            if not self.doc_id_exists(
+                doc_id=item.docID, submit_date_time=item.submitDateTime
+            ):
+                self.insert(asdict(item))
             else:
                 self.logger.info(f"[SKIP]{item.docID} is already exists.")
 
     @Utils.exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-    def doc_id_exists(self, gsi_name, target):
+    def doc_id_exists(self, doc_id, submit_date_time):
         """
         指定されたdocIDがGSIに存在するかを確認する。
         """
         try:
-            response = self.table.query(
-                IndexName=gsi_name,
-                KeyConditionExpression=Key("docID").eq(target),
-                ProjectionExpression="docID",
+            response = self.table.get_item(
+                Key={"docID": doc_id, "submitDateTime": submit_date_time},
+                ProjectionExpression=doc_id,
             )
-            return len(response["Items"]) > 0
+            return "Item" in response
         except ClientError as e:
             print(f"クエリ中にエラーが発生しました: {e.response['Error']['Message']}")
             return False
 
     @Utils.exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-    def insert(self, table, item):
-        table.put_item(Item=item)
-
+    def insert(self, item):
+        self.table.put_item(Item=item)

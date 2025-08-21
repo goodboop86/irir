@@ -151,6 +151,7 @@ class FileInfo:
     cloudpath: str = None
 
 
+@dataclass
 class DbItem(Results):
     xbrl_info: FileInfo = None  # "1"
     pdf_info: FileInfo = None  # "2"
