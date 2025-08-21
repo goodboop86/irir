@@ -8,6 +8,7 @@ from db.strategy.strategy import (
     GetApiKeyFromAws,
     GetDocumentListFromEdiNetApi,
     GetItemsFromDocumentListReaponse,
+    InsertItemsToDynamoDb,
     UploadToAwsS3,
 )
 
@@ -24,7 +25,7 @@ async def run():
     region_name = "ap-northeast-1"
     yyyymmdd = "2023-08-28"
     work_dir="edinet-document"
-    # target_table = "edinet-document_list-api"
+    target_table = "edinet-document_list-api"
 
     session = CreateAwsSession(profile_name=profile).execute()
 
@@ -51,9 +52,9 @@ async def run():
         aws_session=session, db_items=db_items, region_name=region_name
     ).execute()
 
-    # InsertItemsToDynamoDb(
-    #     aws_session=session, items=results, target_table=target_table
-    # ).execute()
+    InsertItemsToDynamoDb(
+        aws_session=session, items=db_items, target_table=target_table
+    ).execute()
 
     # pprint(items)
 

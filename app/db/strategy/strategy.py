@@ -226,7 +226,7 @@ class UploadToAwsS3(Strategy):
         await asyncio.to_thread(
             self.bucket.put_object, Key=info.filepath, Body=file_content
         )
-        self.logger.info(f"[DONE] download [{info.filepath}]")
+        self.logger.info(f"[DONE] upload [{info.filepath}]")
         info.cloudpath = f"https://{self.bucket.name}.s3.{self.region_name}.amazonaws.com/{info.filepath}"
 
 
@@ -272,3 +272,4 @@ class InsertItemsToDynamoDb(Strategy):
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def insert(self, table, item):
         table.put_item(Item=item)
+
