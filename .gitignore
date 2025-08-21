@@ -8,3 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Environment Variable
+.env
+
+# Others
+.DS_Store
+download/
