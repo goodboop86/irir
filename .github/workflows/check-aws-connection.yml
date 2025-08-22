@@ -32,3 +32,4 @@ jobs:
           echo "AWSへの接続を確認..."
           aws sts get-caller-identity
           echo "接続成功！"
+          
