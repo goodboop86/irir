@@ -6,7 +6,7 @@ on:
       - main
   pull_request:
     branches:
-      - "develop-*"
+      - develop-*
 
 permissions:
   id-token: write
@@ -32,4 +32,3 @@ jobs:
           echo "AWSへの接続を確認..."
           aws sts get-caller-identity
           echo "接続成功！"
-          
