@@ -7,7 +7,6 @@
 
 ## aws sso 初期設定
 ```shell
-
 % aws configure
 AWS Access Key ID [None]: 
 AWS Secret Access Key [None]: 
@@ -30,6 +29,9 @@ To use this profile, specify the profile name using --profile, as shown:
 aws sso login --profile [username]
 ```
 
+
+## GithubAction - AWS IAM連携
+
 ## 参考リンク
 
 **IAM Identity Centerの設定**
@@ -37,4 +39,9 @@ aws sso login --profile [username]
 [AWSアカウントにサインインするときはIAM Identity Center経由にしましょう](https://zenn.dev/murakami_koki/articles/79ac2456564b36)
 
 **SSO Login設定**
+
 [AWS CLIのSSO設定](https://zenn.dev/fez_tech/articles/fec83b79c44ff1)
+
+**GithubAction - AWS IAM連携**
+
+[configure-aws-credentials](https://github.com/aws-actions/configure-aws-credentials)

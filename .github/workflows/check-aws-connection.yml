@@ -1,0 +1,34 @@
+name: Check AWS Connection
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - "develop-*"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check-connection:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # IAMロールのARNを指定
+          role-to-assume: arn:aws:iam::your-account-id:role/your-iam-role-name
+          aws-region: ap-northeast-1
+
+      - name: Verify AWS CLI is working
+        run: |
+          echo "AWSへの接続を確認..."
+          aws sts get-caller-identity
+          echo "接続成功！"
