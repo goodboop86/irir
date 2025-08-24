@@ -43,7 +43,7 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/irir-${SERVICE_NAME}-pr:latest
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/irir/${SERVICE_NAME}-pr:latest
           DOCKERFILE_PATH=./Dockerfile
           
           echo "Building image for register..."
