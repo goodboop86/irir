@@ -32,8 +32,8 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           # IAMロールのARNを指定
-          role-to-assume: arn:aws:iam::${AWS_ACCOUNT_ID}:role/${AWS_ASSME_ROLE}
-          aws-region: ${AWS_REGION}
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.AWS_ASSUME_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
