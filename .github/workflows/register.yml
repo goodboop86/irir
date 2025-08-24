@@ -1,0 +1,53 @@
+name: Build & Push Register Docker Image
+
+on:
+  push:
+    paths:
+      - 'app/register/**'
+  pull_request:
+    paths:
+      - 'app/register/**'
+    branches:
+      - main
+
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check-connection:
+    runs-on: ubuntu-latest
+    env:
+      SERVICE_NAME: register
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ASSUME_ROLE }}
+      AWS_REGION: ap-northeast-1
+      AWS_ASSME_ROLE: github-actions-assume-role
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # IAMロールのARNを指定
+          role-to-assume: arn:aws:iam::${AWS_ACCOUNT_ID}:role/${AWS_ASSME_ROLE}
+          aws-region: ${AWS_REGION}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/irir-register-pr:latest
+          DOCKERFILE_PATH=./Dockerfile
+          
+          echo "Building image for register..."
+          docker build -t $IMAGE_URI -f $DOCKERFILE_PATH .
+          
+          echo "Pushing image to ECR..."
+          docker push $IMAGE_URI
