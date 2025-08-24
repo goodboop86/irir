@@ -1,8 +1,8 @@
 import asyncio
 
-from db.model.edinet.document_item import DbItem
-from db.model.edinet.document_list_response_type2 import DocumentListResponseType2
-from db.strategy.strategy import (
+from db.main.model.edinet.document_item import DbItem
+from db.main.model.edinet.document_list_response_type2 import DocumentListResponseType2
+from db.main.strategy.strategy import (
     CreateAwsSession,
     DownloadDocumentFromEdiNetApi,
     GetApiKeyFromAws,

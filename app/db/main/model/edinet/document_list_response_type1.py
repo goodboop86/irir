@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import requests
 
-from db.model.edinet.metadata import Metadata
+from db.main.model.edinet.metadata import Metadata
 
 
 # --- Main response dataclass ---

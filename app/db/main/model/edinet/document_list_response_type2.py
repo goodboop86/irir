@@ -3,8 +3,8 @@ from typing import List
 
 import requests
 
-from db.model.edinet.document_item import Results
-from db.model.edinet.metadata import Metadata
+from db.main.model.edinet.document_item import Results
+from db.main.model.edinet.metadata import Metadata
 
 
 # --- Main response dataclass ---
