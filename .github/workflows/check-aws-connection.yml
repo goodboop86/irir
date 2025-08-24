@@ -21,7 +21,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           # IAMロールのARNを指定
-          role-to-assume: arn:aws:iam::your-account-id:role/your-iam-role-name
+          role-to-assume: arn:aws:iam::196927155234:role/github-actions-assume-role
           aws-region: ap-northeast-1
 
       - name: Verify AWS CLI is working
