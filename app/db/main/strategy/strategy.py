@@ -36,6 +36,9 @@ class CreateAwsSession(Strategy):
     @Utils.log_exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
+        if self.profile_name == "lambda":
+            return boto3.Session()
+
         return boto3.Session(profile_name=self.profile_name)
 
 
@@ -195,11 +198,12 @@ class UploadToAwsS3(Strategy):
     aws_session: Session
     db_items: list[DbItem]
     region_name: str
+    s3_bucket_name: str
     buclet = None
 
     def __post_init__(self):
         resource = self.aws_session.resource("s3")
-        self.bucket = resource.Bucket("irir-project")
+        self.bucket = resource.Bucket(self.s3_bucket_name)
 
     @override
     @Utils.log_exception

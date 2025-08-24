@@ -1,4 +1,7 @@
 import asyncio
+import os
+
+from dotenv import load_dotenv
 
 from db.main.model.edinet.document_item import DbItem
 from db.main.model.edinet.document_list_response_type2 import DocumentListResponseType2
@@ -13,27 +16,28 @@ from db.main.strategy.strategy import (
 )
 
 
-# with open("app/common/main/resources/document_list_response_type2.json") as f:
-#     resp = json.loads(f.read())
-
-
 async def run():
 
-    profile = "gb86sub"
-    secret_name = "EdinetApiKey"
-    key_name = "EDINET_API_KEY"
-    region_name = "ap-northeast-1"
-    yyyymmdd = "2023-08-28"
-    work_dir = "edinet-document"
-    target_table = "edinet-document_list-api"
+    load_dotenv()
 
-    session = CreateAwsSession(profile_name=profile).execute()
+    aws_profile = os.getenv("AWS_PROFILE")
+    aws_secret_manager__secret_name = os.getenv("AWS_SECRET_MANAGER__SECRET_NAME")
+    aws_secret_manager__secret_key_name = os.getenv(
+        "AWS_SECRET_MANAGER__SECRET_KEY_NAME"
+    )
+    aws_s3__bucket_name = os.getenv("AWS_S3__BUCKET_NAME")
+    aws_region_name = os.getenv("AWS_REGION_NAME")
+    aws_dynamodb__target_table = os.getenv("AWS_DYNAMODB__TARGET_TABLE")
+    yyyymmdd = os.getenv("YYYYMMDD")
+    work_dir = os.getenv("WORK_DIR")
+
+    session = CreateAwsSession(profile_name=aws_profile).execute()
 
     apikey = GetApiKeyFromAws(
         aws_session=session,
-        secret_name=secret_name,
-        key_name=key_name,
-        region_name=region_name,
+        secret_name=aws_secret_manager__secret_name,
+        key_name=aws_secret_manager__secret_key_name,
+        region_name=aws_region_name,
     ).execute()
 
     documentlist: DocumentListResponseType2 = GetDocumentListFromEdiNetApi(
@@ -49,11 +53,14 @@ async def run():
     ).execute()
 
     db_items: list[DbItem] = await UploadToAwsS3(
-        aws_session=session, db_items=db_items, region_name=region_name
+        aws_session=session,
+        db_items=db_items,
+        region_name=aws_region_name,
+        s3_bucket_name=aws_s3__bucket_name,
     ).execute()
 
     InsertItemsToDynamoDb(
-        aws_session=session, items=db_items, target_table=target_table
+        aws_session=session, items=db_items, target_table=aws_dynamodb__target_table
     ).execute()
 
 
