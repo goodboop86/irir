@@ -1,7 +1,12 @@
 name: Check AWS Connection
 
 on:
+  push:
+    paths:
+      - 'app/db/**'
   pull_request:
+    paths:
+      - 'app/db/**'
     branches:
       - main
 

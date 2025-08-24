@@ -83,7 +83,10 @@ curl -o document.zip 'https://api.edinet-fsa.go.jp/api/v2/documents/S100RR60?typ
 ```
 
 ```
-PYTHONPATH=./ uv run app/path/to/[filename].py
+PYTHONPATH="./app" uv run app/path/to/[filename].py
+
+# db
+PYTHONPATH="./app" uv run app/db/main/main.py
 ```
 
 ## 開発
