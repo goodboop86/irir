@@ -3,9 +3,9 @@ import os
 
 from dotenv import load_dotenv
 
-from db.main.model.edinet.document_item import DbItem
-from db.main.model.edinet.document_list_response_type2 import DocumentListResponseType2
-from db.main.strategy.strategy import (
+from register.main.model.edinet.document_item import DbItem
+from register.main.model.edinet.document_list_response_type2 import DocumentListResponseType2
+from register.main.strategy.strategy import (
     CreateAwsSession,
     DownloadDocumentFromEdiNetApi,
     GetApiKeyFromAws,

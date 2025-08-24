@@ -14,9 +14,9 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 from boto3.session import Session
 
 from common.main.lib.utils import Utils
-from db.main.model.edinet.document_item import DbItem, FileInfo, Results
-from db.main.model.edinet.document_list_response_type2 import DocumentListResponseType2
-from db.main.model.edinet.edinet_enums import DocType
+from register.main.model.edinet.document_item import DbItem, FileInfo, Results
+from register.main.model.edinet.document_list_response_type2 import DocumentListResponseType2
+from register.main.model.edinet.edinet_enums import DocType
 
 
 @dataclass
