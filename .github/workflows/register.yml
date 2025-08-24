@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SERVICE_NAME: register
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ASSUME_ROLE }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       AWS_REGION: ap-northeast-1
       AWS_ASSME_ROLE: github-actions-assume-role
 
