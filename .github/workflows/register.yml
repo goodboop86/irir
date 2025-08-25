@@ -53,14 +53,16 @@ jobs:
       # Lambda
       - name: Read JSON from path
         run: |
-          INITIAL_EVENT=$(jq -c '.' $INITIAL_EVENT_PATH)
+          RAW_JSON=$(jq -c '.' $INITIAL_EVENT_PATH)
+          # JSONをシングルクォートで囲む
+          INITIAL_EVENT="'$RAW_JSON'"
           echo "INITIAL_EVENT=$INITIAL_EVENT" >> $GITHUB_ENV
 
       - name: Update Lambda environment
         run: |
           aws lambda update-function-configuration \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-            --environment Variables="{\"INITIAL_EVENT\":\"$INITIAL_EVENT\"}"
+            --environment Variables="{\"INITIAL_EVENT\":$INITIAL_EVENT}"
 
       - name: Deploy to Lambda
         run: |
