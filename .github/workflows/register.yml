@@ -66,6 +66,9 @@ jobs:
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
             --environment "$LAMBDA_ENV"
 
+          echo "Waiting for Lambda configuration update to complete..."
+          aws lambda wait function-updated --function-name ${{ env.LAMBDA_FUNCTION_NAME }}
+
       # Lambda デプロイ
       - name: Deploy to Lambda
         run: |
