@@ -65,4 +65,4 @@ if __name__ == "__main__":
     local_context = LocalLambdaContext()
 
     # Run the main function with the retrieved parameters
-    asyncio.run(lambda_handler(event=event, context=local_context))
+    asyncio.run(lambda_handler(event=event["INITIAL_EVENT"], context=local_context))

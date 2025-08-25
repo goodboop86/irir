@@ -51,17 +51,17 @@ jobs:
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_OUTPUT
 
       # Lambda
-      - name: Read JSON from path and escape
+      - name: Read JSON from path and prepare for Lambda
         run: |
-          # JSON を1行化して、内部の " を \\" にエスケープ
-          INITIAL_EVENT=$(jq -c '.' $INITIAL_EVENT_PATH | sed 's/"/\\"/g')
-          echo "INITIAL_EVENT=$INITIAL_EVENT" >> $GITHUB_ENV
+          # JSON を1行化
+          LAMBDA_ENV=$(jq -c '.' $INITIAL_EVENT_PATH)
+          echo "LAMBDA_ENV=$LAMBDA_ENV" >> $GITHUB_ENV
 
       - name: Update Lambda environment
         run: |
           aws lambda update-function-configuration \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-            --environment Variables="{\"INITIAL_EVENT\":\"$INITIAL_EVENT\"}"
+            --environment "$LAMBDA_ENV"
 
       - name: Deploy to Lambda
         run: |
