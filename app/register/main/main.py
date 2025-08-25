@@ -57,7 +57,7 @@ async def lambda_handler(event, context):
 if __name__ == "__main__":
 
     # event
-    config_file_path = "register/main/resources/lambda_event.json"
+    config_file_path = "register/main/resources/local_lambda_event.json"
     with open(config_file_path, "r", encoding="utf-8") as f:
         event = json.load(f)
 
