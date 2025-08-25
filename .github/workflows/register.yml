@@ -25,6 +25,7 @@ env:
   BASE_EVENT_PATH: app/register/main/resources/cloud_lambda_event.json
   LAMBDA_EVENT_FILE: lambda_event.json       # 生成する JSON ファイル名を env で管理
   EVENT_RULE_NAME: register-pr-schedule      # EventBridge ルール名を env で管理
+  LAMBDA_PERMISSION_ID: register-pr-schedule-permission  # statement-id
 
 jobs:
   build-and-deploy:
@@ -72,9 +73,17 @@ jobs:
             --rule ${{ env.EVENT_RULE_NAME }} \
             --targets "Id"="1","Arn"="$LAMBDA_ARN"
 
+          # 既存の権限がある場合は削除
+          if aws lambda get-policy --function-name ${{ env.LAMBDA_FUNCTION_NAME }} | grep -q ${{ env.LAMBDA_PERMISSION_ID }}; then
+            aws lambda remove-permission \
+              --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+              --statement-id ${{ env.LAMBDA_PERMISSION_ID }}
+          fi
+
+          # Lambda 呼び出し権限を追加
           aws lambda add-permission \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-            --statement-id "${{ env.EVENT_RULE_NAME }}-permission" \
+            --statement-id ${{ env.LAMBDA_PERMISSION_ID }} \
             --action "lambda:InvokeFunction" \
             --principal events.amazonaws.com \
             --source-arn "arn:aws:events:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:rule/${{ env.EVENT_RULE_NAME }}"
