@@ -61,7 +61,6 @@ jobs:
 
       # Lambda 環境変数更新
       - name: Update Lambda environment
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           aws lambda update-function-configuration \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
@@ -69,7 +68,6 @@ jobs:
 
       # Lambda デプロイ
       - name: Deploy to Lambda
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           aws lambda update-function-code \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
