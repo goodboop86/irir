@@ -2,6 +2,8 @@ name: Build & Deploy Register Lambda
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'app/register/**'
   pull_request:
