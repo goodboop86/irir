@@ -1,28 +1,29 @@
-# ベースイメージ
+# ベースイメージはLambdaランタイムのPython 3.13
 FROM public.ecr.aws/lambda/python:3.13
 
-# uv インストール
-COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /uvx /bin/
+# uvのインストール
+# ghcrからuvバイナリをコピーし、標準的な実行パスに配置
+COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /uvx /usr/local/bin/
 
-# ビルド時引数でサービス名を切り替え（必須）
+# ビルド時引数でサービス名を切り替え
 ARG SERVICE
 
-# SERVICE が未指定ならビルドを止める
+# SERVICEが未指定ならビルドを停止
 RUN if [ -z "$SERVICE" ]; then echo "ERROR: SERVICE build-arg is required"; exit 1; fi
 
-# 依存ファイルだけコピーして uv sync
+# 依存関係のインストールをキャッシュするために、依存ファイルのみを先にコピー
 WORKDIR /app
 COPY app/${SERVICE}/pyproject.toml app/${SERVICE}/uv.lock ./
 RUN uv sync --locked
 
-# 共通コードコピー（common）
-COPY app/common/ /app/common
-
-# サービス本体コピー
+# 共通コードとサービス固有のコードをコピー
+COPY app/common/ /app/common/
 COPY app/${SERVICE}/ /app/${SERVICE}/
 
-# Python パス設定
+# Pythonパスの設定
+# これにより、/appにあるモジュールを正しくインポートできる
 ENV PYTHONPATH=./
 
-# コンテナ起動時（Lambdaハンドラを指定）
+# コンテナ起動時にLambdaハンドラ関数を直接指定
+# これがLambdaランタイムが期待する形式
 CMD ["${SERVICE}.main.main.lambda_handler"]
