@@ -1,4 +1,4 @@
-name: Build & Push Register Docker Image
+name: Build & Deploy Register Lambda
 
 on:
   push:
@@ -14,53 +14,40 @@ permissions:
   id-token: write
   contents: read
 
-env: # Top-level env block for common variables
+env:
   SERVICE_NAME: register
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_REGION: ap-northeast-1
   AWS_ASSUME_ROLE: github-actions-assume-role
+  LAMBDA_FUNCTION_NAME: irir-register-pr
 
 jobs:
-  build-and-push-register-docker-image: # Renamed job
+  build-and-deploy:
     runs-on: ubuntu-latest
-    # env block removed as variables are now at top level
-    env: # Keep this for job-specific env vars if any, or remove if none
-      LAMBDA_FUNCTION_NAME: irir-register-pr # Specific env for this job
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # IAMロールのARNを指定
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.AWS_ASSUME_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and Push Docker Image
-        id: build_image # Added ID to output IMAGE_URI
+      - name: Build & Push Docker image
+        id: build
         run: |
           IMAGE_URI=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/irir/${{ env.SERVICE_NAME }}-pr:latest
-          DOCKERFILE_PATH=./Dockerfile
-          
-          echo "Building image for register..."
-          docker build -t $IMAGE_URI --build-arg SERVICE=${{ env.SERVICE_NAME }} -f $DOCKERFILE_PATH .
-          
-          echo "Pushing image to ECR..."
+          docker build -t $IMAGE_URI --build-arg SERVICE=${{ env.SERVICE_NAME }} .
           docker push $IMAGE_URI
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_OUTPUT # Output IMAGE_URI
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_OUTPUT
 
-      - name: Deploy to AWS Lambda # Added deployment step here
-        uses: aws-actions/aws-lambda-deploy-action@v1
-        with:
-          function-name: ${{ env.LAMBDA_FUNCTION_NAME }}
-          image-uri: ${{ steps.build_image.outputs.IMAGE_URI }} # Reference IMAGE_URI from build job
-          region: ${{ env.AWS_REGION }}
-          image-tag: latest # Using 'latest' tag as discussed
+      - name: Deploy to Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --image-uri ${{ steps.build.outputs.IMAGE_URI }}
