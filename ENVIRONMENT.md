@@ -29,6 +29,15 @@ To use this profile, specify the profile name using --profile, as shown:
 aws sso login --profile [username]
 ```
 
+## AWS ECRへのローカルアクセス
+```shell
+% aws ecr get-login-password --region ap-northeast-1 --profile gb86sub | docker login --username AWS --password-stdin [AWS_ACCOUT_ID].dkr.ecr.ap-northeast-1.amazonaws.com
+Login Succeeded
+
+% docker pull [AWS_ACCOUT_ID].dkr.ecr.ap-northeast-1.amazonaws.com/irir/register-pr:latest
+% docker run -it --rm --platform linux/amd64 --entrypoint /bin/sh [IMAGE_ID]
+```
+
 
 ## GithubAction - AWS IAM連携
 

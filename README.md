@@ -61,6 +61,10 @@ IRIRは、金融庁のEDINET（Electronic Disclosure for Investors' NETwork）AP
 ### アプリケーションの起動
 
 ```bash
+# db(lambda)
+cd app/
+PYTHONPATH="./" uv run db/main/main.py
+
 # フロントエンドアプリケーションの起動
 uv run streamlit run app/frontend/main.py
 
@@ -83,7 +87,10 @@ curl -o document.zip 'https://api.edinet-fsa.go.jp/api/v2/documents/S100RR60?typ
 ```
 
 ```
-PYTHONPATH=./ uv run app/path/to/[filename].py
+PYTHONPATH="./app" uv run app/path/to/[filename].py
+
+# db
+PYTHONPATH="./app" uv run app/db/main/main.py
 ```
 
 ## 開発
@@ -101,6 +108,15 @@ uv run ruff format
 - **app/frontend/**: Streamlitベースのユーザーインターフェース
 - **app/backend/**: EDINET API連携とビジネスロジック
 - **app/backend/model/**: データモデル定義
+
+### Docker作成
+
+- app/commonとapp/[target]からなるimageを作成する
+- パッケージ管理はuvを使う
+
+```shell
+docker build -t irir-db --build-arg SERVICE=db -f Dockerfile .
+```
 
 ## EDINET API について
 

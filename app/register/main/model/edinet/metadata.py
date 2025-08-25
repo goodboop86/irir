@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
 
-from db.main.model.edinet.parameter import Parameter
-from db.main.model.edinet.resultset import Resultset
+from register.main.model.edinet.parameter import Parameter
+from register.main.model.edinet.resultset import Resultset
 
 
 @dataclass

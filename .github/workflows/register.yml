@@ -1,0 +1,112 @@
+name: Build & Deploy Register Lambda
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/register/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/register/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  SERVICE_NAME: register
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  AWS_REGION: ap-northeast-1
+  AWS_ASSUME_ROLE: github-actions-assume-role
+  LAMBDA_FUNCTION_NAME: irir-register-pr
+  BASE_EVENT_PATH: app/register/main/resources/cloud_lambda_event.json
+  LAMBDA_EVENT_FILE: lambda_event.json       # 生成する JSON ファイル名を env で管理
+  EVENT_RULE_NAME: register-pr-schedule      # EventBridge ルール名を env で管理
+  LAMBDA_PERMISSION_ID: register-pr-schedule-permission  # statement-id
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.AWS_ASSUME_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ECR
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Docker image
+        id: build
+        run: |
+          # 環境変数をシェルで設定
+          export SERVICE_NAME=${{ env.SERVICE_NAME }}
+          envsubst '$SERVICE_NAME' < Dockerfile.tmpl > Dockerfile
+
+          IMAGE_URI=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/irir/${{ env.SERVICE_NAME }}-pr:latest
+          docker build -t $IMAGE_URI -f Dockerfile .
+
+          rm Dockerfile.tmpl
+
+          docker push $IMAGE_URI
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+      # Lambda デプロイ
+      - name: Deploy to Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --image-uri ${{ steps.build.outputs.IMAGE_URI }}
+
+      # EventBridge で Lambda 定期実行登録
+      - name: Create EventBridge Rule for Lambda
+        run: |
+          aws events put-rule \
+            --name ${{ env.EVENT_RULE_NAME }} \
+            --schedule-expression "cron(0 0 * * ? *)" \
+            --state ENABLED
+
+          LAMBDA_ARN=$(aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} --query 'Configuration.FunctionArn' --output text)
+          aws events put-targets \
+            --rule ${{ env.EVENT_RULE_NAME }} \
+            --targets "Id"="1","Arn"="$LAMBDA_ARN"
+
+          # 既存の権限がある場合は削除
+          if aws lambda get-policy --function-name ${{ env.LAMBDA_FUNCTION_NAME }} | grep -q ${{ env.LAMBDA_PERMISSION_ID }}; then
+            aws lambda remove-permission \
+              --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+              --statement-id ${{ env.LAMBDA_PERMISSION_ID }}
+          fi
+
+          # Lambda 呼び出し権限を追加
+          aws lambda add-permission \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --statement-id ${{ env.LAMBDA_PERMISSION_ID }} \
+            --action "lambda:InvokeFunction" \
+            --principal events.amazonaws.com \
+            --source-arn "arn:aws:events:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:rule/${{ env.EVENT_RULE_NAME }}"
+
+      # 前日付 JSON を生成（1行形式）して Lambda に渡す
+      - name: Prepare Lambda event with yesterday's date
+        run: |
+          YESTERDAY=$(date -d "yesterday" '+%Y-%m-%d')
+          jq -c --arg date "$YESTERDAY" '.YYYYMMDD = $date' ${{ env.BASE_EVENT_PATH }} > ${{ env.LAMBDA_EVENT_FILE }}
+          echo "Updated ${{ env.LAMBDA_EVENT_FILE }} with YYYYMMDD=$YESTERDAY"
+
+      # Lambda テスト実行（1行 JSON を payload として渡す）
+      # - name: Invoke Lambda with initial event
+      #   run: |
+      #     aws lambda invoke \
+      #       --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+      #       --payload file://$LAMBDA_EVENT_FILE \
+      #       response.json
+      #     cat response.json

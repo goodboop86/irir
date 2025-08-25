@@ -14,9 +14,12 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 from boto3.session import Session
 
 from common.main.lib.utils import Utils
-from db.main.model.edinet.document_item import DbItem, FileInfo, Results
-from db.main.model.edinet.document_list_response_type2 import DocumentListResponseType2
-from db.main.model.edinet.edinet_enums import DocType
+from register.main.model.edinet.document_item import DbItem, FileInfo, Results
+from register.main.model.edinet.document_list_response_type2 import (
+    DocumentListResponseType2,
+)
+from register.main.model.edinet.edinet_enums import DocType
+from register.main.model.lambda_event import RegisterLambdaEvent
 
 
 @dataclass
@@ -29,42 +32,46 @@ class Strategy:
 
 
 @dataclass
-class CreateAwsSession(Strategy):
-    profile_name: str
+class AwsLambdaStrategy(Strategy):
+    event: RegisterLambdaEvent
 
-    @override
-    @Utils.log_exception
-    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
+    @abstractmethod
     def execute(self):
-        return boto3.Session(profile_name=self.profile_name)
+        pass
 
 
 @dataclass
-class GetApiKeyFromAws(Strategy):
-    aws_session: Session
-    secret_name: str
-    key_name: str
-    region_name: str
-    client = None
-
-    def __post_init__(self):
-        self.client = self.aws_session.client(
-            service_name="secretsmanager", region_name=self.region_name
-        )
+class CreateAwsSession(AwsLambdaStrategy):
 
     @override
     @Utils.log_exception
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
     def execute(self):
-        secret = self.get_secret()
-        return json.loads(secret)[self.key_name]
+        if self.event.ENV == "lambda":
+            return boto3.Session()
 
+        return boto3.Session(profile_name=self.event.AWS_PROFILE)
+
+
+@dataclass
+class GetApiKeyFromAws(AwsLambdaStrategy):
+    aws_session: Session
+
+    @override
     @Utils.exception
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-    def get_secret(self):
-        get_secret_value_response = self.client.get_secret_value(
-            SecretId=self.secret_name
+    def execute(self):
+        region_name = self.event.AWS_REGION_NAME
+        secret_name = self.event.AWS_SECRET_MANAGER__SECRET_NAME
+        key_name = self.event.AWS_SECRET_MANAGER__SECRET_KEY_NAME
+
+        client = self.aws_session.client(
+            service_name="secretsmanager", region_name=region_name
         )
-        return get_secret_value_response["SecretString"]
+        get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+        secret = get_secret_value_response["SecretString"]
+
+        return json.loads(secret)[key_name]
 
 
 @dataclass
@@ -101,18 +108,17 @@ class GetItemsFromDocumentListReaponse(Strategy):
 
 
 @dataclass
-class DownloadDocumentFromEdiNetApi(Strategy):
+class DownloadDocumentFromEdiNetApi(AwsLambdaStrategy):
     api_key: str
     documentlist: DocumentListResponseType2
-    work_dir: str
     endpoint: str = "https://api.edinet-fsa.go.jp/api/v2/documents/"
 
     @override
     @Utils.log_exception
     async def execute(self):
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as aiosession:
             tasks = [
-                self.download(session, result)
+                self.download(aiosession, result)
                 for result in self.documentlist.results[:10]
             ]
             db_items: list[DbItem] = await asyncio.gather(*tasks)
@@ -129,7 +135,7 @@ class DownloadDocumentFromEdiNetApi(Strategy):
             "Subscription-Key": self.api_key,
         }
 
-        save_dir = f"{self.work_dir}/{db_item.edinetCode}/{db_item.submitDateTime}/{db_item.docID}"
+        save_dir = f"{self.event.WORK_DIR}/{db_item.edinetCode}/{db_item.submitDateTime}/{db_item.docID}"
         os.makedirs(save_dir, exist_ok=True)
 
         if db_item.has_xbrl():
@@ -191,15 +197,14 @@ class DownloadDocumentFromEdiNetApi(Strategy):
 
 
 @dataclass
-class UploadToAwsS3(Strategy):
+class UploadToAwsS3(AwsLambdaStrategy):
     aws_session: Session
     db_items: list[DbItem]
-    region_name: str
-    buclet = None
+    bucket = None
 
     def __post_init__(self):
         resource = self.aws_session.resource("s3")
-        self.bucket = resource.Bucket("irir-project")
+        self.bucket = resource.Bucket(self.event.AWS_S3__BUCKET_NAME)
 
     @override
     @Utils.log_exception
@@ -226,18 +231,17 @@ class UploadToAwsS3(Strategy):
             self.bucket.put_object, Key=info.filepath, Body=file_content
         )
         self.logger.info(f"[DONE] upload [{info.filepath}]")
-        info.cloudpath = f"s3://{self.bucket.name}.s3.{self.region_name}.amazonaws.com/{info.filepath}"
+        info.cloudpath = f"s3://{self.bucket.name}.s3.{self.event.AWS_REGION_NAME}.amazonaws.com/{info.filepath}"
 
 
 @dataclass
-class InsertItemsToDynamoDb(Strategy):
+class InsertItemsToDynamoDb(AwsLambdaStrategy):
     aws_session: Session
     items: list[DbItem]
-    target_table: str
 
     def __post_init__(self):
         resource = self.aws_session.resource("dynamodb")
-        self.table = resource.Table(self.target_table)
+        self.table = resource.Table(self.event.AWS_DYNAMODB__TARGET_TABLE)
 
     @override
     @Utils.log_exception
