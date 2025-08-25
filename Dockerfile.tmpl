@@ -1,0 +1,22 @@
+# ベースイメージ
+FROM public.ecr.aws/lambda/python:3.13
+
+# uv インストール
+COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /uvx /usr/local/bin/
+
+# 依存関係のインストールとコードのコピー
+WORKDIR /app
+COPY app/${SERVICE}/pyproject.toml app/${SERVICE}/uv.lock ./
+RUN uv sync --locked
+COPY app/common/ /app/common/
+COPY app/${SERVICE}/ /app/${SERVICE}/
+
+# envsubstのインストール
+RUN yum install -y gettext
+
+# envsubstでハンドラを動的に設定するためのスクリプトをコピー
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
+# コンテナ起動時のエントリーポイントとしてスクリプトを実行
+ENTRYPOINT ["./entrypoint.sh"]

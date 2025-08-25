@@ -48,8 +48,15 @@ jobs:
       - name: Build & Push Docker image
         id: build
         run: |
+          # 環境変数をシェルで設定
+          export SERVICE_NAME=${{ env.SERVICE_NAME }}
+          envsubst '$SERVICE_NAME' < Dockerfile.tmpl > Dockerfile
+          
           IMAGE_URI=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/irir/${{ env.SERVICE_NAME }}-pr:latest
-          docker build -t $IMAGE_URI --build-arg SERVICE=${{ env.SERVICE_NAME }} .
+          docker build -t $IMAGE_URI -f Dockerfile .
+
+          rm Dockerfile.tmp
+
           docker push $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_OUTPUT
 
