@@ -50,20 +50,26 @@ jobs:
           docker push $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_OUTPUT
 
-      # Lambda
-      - name: Read JSON from path and prepare for Lambda
+      # Lambda 環境変数の準備
+      - name: Prepare Lambda environment
         run: |
-          # JSON を1行化
-          LAMBDA_ENV=$(jq -c '.' $INITIAL_EVENT_PATH)
+          # foo.json を1行化して文字列化
+          INITIAL_EVENT=$(jq -c '.' $INITIAL_EVENT_PATH | sed 's/"/\\"/g')
+          # Variables キーを付けた JSON を作成
+          LAMBDA_ENV="{\"Variables\":{\"INITIAL_EVENT\":\"$INITIAL_EVENT\"}}"
           echo "LAMBDA_ENV=$LAMBDA_ENV" >> $GITHUB_ENV
 
+      # Lambda 環境変数更新
       - name: Update Lambda environment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           aws lambda update-function-configuration \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
             --environment "$LAMBDA_ENV"
 
+      # Lambda デプロイ
       - name: Deploy to Lambda
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           aws lambda update-function-code \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
