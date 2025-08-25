@@ -96,10 +96,10 @@ jobs:
           echo "Updated ${{ env.LAMBDA_EVENT_FILE }} with YYYYMMDD=$YESTERDAY"
 
       # Lambda テスト実行（1行 JSON を payload として渡す）
-      - name: Invoke Lambda with initial event
-        run: |
-          aws lambda invoke \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-            --payload file://$LAMBDA_EVENT_FILE \
-            response.json
-          cat response.json
+      # - name: Invoke Lambda with initial event
+      #   run: |
+      #     aws lambda invoke \
+      #       --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+      #       --payload file://$LAMBDA_EVENT_FILE \
+      #       response.json
+      #     cat response.json
