@@ -62,10 +62,10 @@ jobs:
       # EventBridge で Lambda 定期実行登録
       - name: Create EventBridge Rule for Lambda
         run: |
-          # cron(0 0 0 * * ? *) → UTC 0:00 毎日、日本時間 9:00 に実行
+          # cron(0 0 * * ? *) → UTC 0:00 毎日、日本時間 9:00 に実行
           aws events put-rule \
             --name ${{ env.EVENT_RULE_NAME }} \
-            --schedule-expression "cron(0 0 0 * * ? *)" \
+            --schedule-expression "cron(0 0 * * ? *)" \
             --state ENABLED
 
           # Lambda をターゲットに登録
