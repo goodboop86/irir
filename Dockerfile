@@ -8,6 +8,9 @@ COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /uvx /usr/local/bin/
 # ビルド時引数でサービス名を切り替え
 ARG SERVICE
 
+# ARGの値をENVとして最終イメージに書き込む
+ENV SERVICE=${SERVICE}
+
 # SERVICEが未指定ならビルドを停止
 RUN if [ -z "$SERVICE" ]; then echo "ERROR: SERVICE build-arg is required"; exit 1; fi
 
