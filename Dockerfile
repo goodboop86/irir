@@ -3,7 +3,6 @@ FROM public.ecr.aws/lambda/python:3.13
 
 # uv インストール
 COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /uvx /bin/
-ENV PATH="/root/.local/bin/:$PATH"
 
 # ビルド時引数でサービス名を切り替え（必須）
 ARG SERVICE
@@ -25,5 +24,5 @@ COPY app/${SERVICE}/ /app/${SERVICE}/
 # Python パス設定
 ENV PYTHONPATH=./
 
-# コンテナ起動時
-CMD ["uv", "run", "${SERVICE}/main/main.py"]
+# コンテナ起動時（Lambdaハンドラを指定）
+CMD ["${SERVICE}.main.main.lambda_handler"]
