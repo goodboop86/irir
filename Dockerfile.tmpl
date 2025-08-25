@@ -6,10 +6,10 @@ COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /uvx /usr/local/bin/
 
 # 依存関係のインストールとコードのコピー
 WORKDIR /app
-COPY app/${SERVICE}/pyproject.toml app/${SERVICE}/uv.lock ./
+COPY app/${SERVICE_NAME}/pyproject.toml app/${SERVICE_NAME}/uv.lock ./
 RUN uv sync --locked
 COPY app/common/ /app/common/
-COPY app/${SERVICE}/ /app/${SERVICE}/
+COPY app/${SERVICE_NAME}/ /app/${SERVICE_NAME}/
 
 # Pythonパスの設定
 # これにより、/appにあるモジュールを正しくインポートできる
@@ -17,4 +17,4 @@ ENV PYTHONPATH=./
 
 # コンテナ起動時にLambdaハンドラ関数を直接指定
 # これがLambdaランタイムが期待する形式
-CMD ["${SERVICE}.main.main.lambda_handler"]
+CMD ["${SERVICE_NAME}.main.main.lambda_handler"]
