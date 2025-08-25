@@ -51,16 +51,19 @@ async def run(
         region_name=aws_region_name,
     ).execute()
 
-    documentlist: DocumentListResponseType2 = GetDocumentListFromEdiNetApi(
+    # Get the list of documents from the EdiNet API
+    document_list_response: DocumentListResponseType2 = GetDocumentListFromEdiNetApi(
         type="2", api_key=apikey, yyyymmdd=yyyymmdd
     ).execute()
 
-    documentlist: DocumentListResponseType2 = GetItemsFromDocumentListReaponse(
-        document_list_response=documentlist
+    # Extract items from the document list response
+    db_items: list[DbItem] = GetItemsFromDocumentListReaponse(
+        document_list_response=document_list_response
     ).execute()
 
+    # Download documents using the extracted items
     db_items: list[DbItem] = await DownloadDocumentFromEdiNetApi(
-        api_key=apikey, documentlist=documentlist, work_dir=work_dir
+        api_key=apikey, documentlist=db_items, work_dir=work_dir # Changed documentlist to db_items
     ).execute()
 
     db_items: list[DbItem] = await UploadToAwsS3(
