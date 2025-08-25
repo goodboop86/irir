@@ -1,7 +1,7 @@
 [project]
-name = "irir"
+name = "irir-register"
 version = "0.1.0"
-description = "DB related scripts"
+description = "Register related scripts"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

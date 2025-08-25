@@ -504,7 +504,7 @@ wheels = [
 ]
 
 [[package]]
-name = "irir"
+name = "irir-register"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
