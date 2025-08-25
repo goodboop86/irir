@@ -21,7 +21,7 @@ from register.main.strategy.strategy import (
 
 async def lambda_handler(event, context):
 
-    register_event = RegisterLambdaEvent(**event)
+    register_event = RegisterLambdaEvent(**event["Variables"]["INITIAL_EVENT"])
 
     session = CreateAwsSession(event=register_event).execute()
 
@@ -65,4 +65,4 @@ if __name__ == "__main__":
     local_context = LocalLambdaContext()
 
     # Run the main function with the retrieved parameters
-    asyncio.run(lambda_handler(event=event["INITIAL_EVENT"], context=local_context))
+    asyncio.run(lambda_handler(event=event["Variables"]["INITIAL_EVENT"], context=local_context))
