@@ -50,7 +50,7 @@ jobs:
         run: |
           # 環境変数をシェルで設定
           export SERVICE_NAME=${{ env.SERVICE_NAME }}
-          envsubst '$SERVICE_NAME' < Dockerfile.tmpl > Dockerfile
+          cat Dockerfile.tmpl | envsubst '${NAME1}' > Dockerfile
 
           cat Dockerfile
           
