@@ -52,12 +52,10 @@ jobs:
           export SERVICE_NAME=${{ env.SERVICE_NAME }}
           envsubst '$SERVICE_NAME' < Dockerfile.tmpl > Dockerfile
 
-          cat Dockerfile
-          
           IMAGE_URI=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/irir/${{ env.SERVICE_NAME }}-pr:latest
           docker build -t $IMAGE_URI -f Dockerfile .
 
-          rm Dockerfile.tmp
+          rm Dockerfile.tmpl
 
           docker push $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_OUTPUT
