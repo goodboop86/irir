@@ -11,12 +11,10 @@ RUN uv sync --locked
 COPY app/common/ /app/common/
 COPY app/${SERVICE}/ /app/${SERVICE}/
 
-# envsubstのインストール
-RUN yum install -y gettext
+# Pythonパスの設定
+# これにより、/appにあるモジュールを正しくインポートできる
+ENV PYTHONPATH=./
 
-# envsubstでハンドラを動的に設定するためのスクリプトをコピー
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
-
-# コンテナ起動時のエントリーポイントとしてスクリプトを実行
-ENTRYPOINT ["./entrypoint.sh"]
+# コンテナ起動時にLambdaハンドラ関数を直接指定
+# これがLambdaランタイムが期待する形式
+CMD ["${SERVICE}.main.main.lambda_handler"]
