@@ -7,10 +7,10 @@ on:
     paths:
       - 'app/register/**'
   pull_request:
-    paths:
-      - 'app/register/**'
     branches:
       - main
+    paths:
+      - 'app/register/**'
 
 permissions:
   id-token: write
@@ -22,7 +22,9 @@ env:
   AWS_REGION: ap-northeast-1
   AWS_ASSUME_ROLE: github-actions-assume-role
   LAMBDA_FUNCTION_NAME: irir-register-pr
-  INITIAL_EVENT_PATH: app/register/main/resources/cloud_lambda_event.json
+  BASE_EVENT_PATH: app/register/main/resources/cloud_lambda_event.json
+  LAMBDA_EVENT_FILE: lambda_event.json       # ← 生成する JSON ファイル名を env で管理
+  EVENT_RULE_NAME: register-pr-schedule      # ← EventBridge ルール名を env で管理
 
 jobs:
   build-and-deploy:
@@ -50,28 +52,48 @@ jobs:
           docker push $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_OUTPUT
 
-      # Lambda 環境変数の準備
-      - name: Prepare Lambda environment
-        run: |
-          # foo.json を1行化して文字列化
-          INITIAL_EVENT=$(jq -c '.' $INITIAL_EVENT_PATH | sed 's/"/\\"/g')
-          # Variables キーを付けた JSON を作成
-          LAMBDA_ENV="{\"Variables\":{\"INITIAL_EVENT\":\"$INITIAL_EVENT\"}}"
-          echo "LAMBDA_ENV=$LAMBDA_ENV" >> $GITHUB_ENV
-
-      # Lambda 環境変数更新
-      - name: Update Lambda environment
-        run: |
-          aws lambda update-function-configuration \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-            --environment "$LAMBDA_ENV"
-
-          echo "Waiting for Lambda configuration update to complete..."
-          aws lambda wait function-updated --function-name ${{ env.LAMBDA_FUNCTION_NAME }}
-
       # Lambda デプロイ
       - name: Deploy to Lambda
         run: |
           aws lambda update-function-code \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
             --image-uri ${{ steps.build.outputs.IMAGE_URI }}
+
+      # EventBridge で Lambda 定期実行登録
+      - name: Create EventBridge Rule for Lambda
+        run: |
+          # cron(0 0 0 * * ? *) → UTC 0:00 毎日、日本時間 9:00 に実行
+          aws events put-rule \
+            --name ${{ env.EVENT_RULE_NAME }} \
+            --schedule-expression "cron(0 0 0 * * ? *)" \
+            --state ENABLED
+
+          # Lambda をターゲットに登録
+          LAMBDA_ARN=$(aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} --query 'Configuration.FunctionArn' --output text)
+          aws events put-targets \
+            --rule ${{ env.EVENT_RULE_NAME }} \
+            --targets "Id"="1","Arn"="$LAMBDA_ARN"
+
+          # EventBridge から Lambda 呼び出し権限を付与
+          aws lambda add-permission \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --statement-id "${{ env.EVENT_RULE_NAME }}-permission" \
+            --action "lambda:InvokeFunction" \
+            --principal events.amazonaws.com \
+            --source-arn "arn:aws:events:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:rule/${{ env.EVENT_RULE_NAME }}"
+
+      # 前日付 JSON を生成して Lambda に渡す
+      - name: Prepare Lambda event with yesterday's date
+        run: |
+          YESTERDAY=$(date -d "yesterday" '+%Y-%m-%d')
+          jq --arg date "$YESTERDAY" '.YYYYMMDD = $date' ${{ env.BASE_EVENT_PATH }} > ${{ env.LAMBDA_EVENT_FILE }}
+          echo "Updated ${{ env.LAMBDA_EVENT_FILE }} with YYYYMMDD=$YESTERDAY"
+
+      # Lambda テスト実行（生成した JSON を payload として渡す）
+      - name: Invoke Lambda with initial event
+        run: |
+          aws lambda invoke \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --payload file://$LAMBDA_EVENT_FILE \
+            response.json
+          cat response.json
