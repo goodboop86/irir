@@ -53,6 +53,12 @@ async def lambda_handler(event, context):
         aws_session=session, items=db_items, event=register_event
     ).execute()
 
+    # 成功時にJSONでシリアライズ可能なレスポンスを返す
+    return {
+        "statusCode": 200,
+        "body": "Processing completed successfully!"
+    }
+
 
 if __name__ == "__main__":
 
