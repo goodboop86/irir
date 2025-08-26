@@ -19,7 +19,7 @@ from register.main.strategy.strategy import (
 )
 
 
-async def lambda_handler(event, context):
+async def run(event, context):
 
     register_event = RegisterLambdaEvent(**event)
 
@@ -59,6 +59,10 @@ async def lambda_handler(event, context):
         "body": "Processing completed successfully!"
     }
 
+# 同期的なLambdaハンドラ
+def lambda_handler(event, context):
+    return asyncio.run(run(event, context))
+
 
 if __name__ == "__main__":
 
@@ -71,4 +75,4 @@ if __name__ == "__main__":
     local_context = LocalLambdaContext()
 
     # Run the main function with the retrieved parameters
-    asyncio.run(lambda_handler(event=event, context=local_context))
+    asyncio.run(run(event=event, context=local_context))
