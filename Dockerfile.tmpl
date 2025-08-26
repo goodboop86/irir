@@ -33,9 +33,9 @@ FROM public.ecr.aws/lambda/python:3.13
 COPY --from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}
 
 # Copy the application code.
-COPY ./app/ ${LAMBDA_TASK_ROOT}/app
+COPY ./app ${LAMBDA_TASK_ROOT}/app
 
 # Set the AWS Lambda handler.
-WORKDIR /app
+WORKDIR ${LAMBDA_TASK_ROOT}/app
 ENV PYTHONPATH=./
 CMD ["${SERVICE_NAME}.main.main.lambda_handler"]
