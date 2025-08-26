@@ -1,5 +1,6 @@
 import asyncio
-import json  # Import json for Lambda response
+import json
+import logging  # Import json for Lambda response
 
 
 from common.main.lib.model import LocalLambdaContext
@@ -17,6 +18,9 @@ from register.main.strategy.strategy import (
     InsertItemsToDynamoDb,
     UploadToAwsS3,
 )
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 async def run(event, context):
