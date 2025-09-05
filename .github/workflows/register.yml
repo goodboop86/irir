@@ -21,6 +21,7 @@ env:
   AWS_REGION: ap-northeast-1
   GITHUB_AWS_ASSUME_ROLE: github-actions-assume-role
   LAMBDA__FUNCTION_NAME: irir-register-pr
+  LAMBDA__INPUTFILE: file://app/register/main/resources/cloud_lambda_event.json
   EVENT_BRIDGE__EVENT_RULE_NAME: register-pr-schedule      # EventBridge ルール名を env で管理
   EVENT_BRIDGE__LAMBDA_PERMISSION_ID: register-pr-schedule-permission  # statement-id
   SERVICE__NAME: register
@@ -69,7 +70,7 @@ jobs:
             --image-uri ${{ steps.build.outputs.IMAGE_URI }}
 
 
-      # Lambdaの実行ロールに権限を付与
+      # TODO: Lambdaの実行ロールに権限を付与
       # - name: Attach IAM policy to Lambda role
       #   id: attach_policy
       #   run: |
@@ -81,28 +82,26 @@ jobs:
       # EventBridge で Lambda 定期実行登録
       - name: Create EventBridge Rule for Lambda
         run: |
+          # ルール作成
           aws events put-rule \
             --name ${{ env.EVENT_BRIDGE__EVENT_RULE_NAME }} \
             --schedule-expression "cron(0 0 * * ? *)" \
             --state ENABLED
 
-          LAMBDA_ARN=$(aws lambda get-function --function-name ${{ env.LAMBDA__FUNCTION_NAME }} --query 'Configuration.FunctionArn' --output text)
+          # Lambda ARN 取得
+          LAMBDA_ARN=$(aws lambda get-function \
+            --function-name ${{ env.LAMBDA__FUNCTION_NAME }} \
+            --query 'Configuration.FunctionArn' --output text)
+
+          # ターゲットに JSON ファイルを渡して登録
           aws events put-targets \
             --rule ${{ env.EVENT_BRIDGE__EVENT_RULE_NAME }} \
-            --targets "Id"="1","Arn"="$LAMBDA_ARN"
+            --targets "Id"="1","Arn"="$LAMBDA_ARN","Input=${{ ENV.LAMBDA__INPUTFILE }}"
 
-          # 既存の権限がある場合は削除
-          if aws lambda get-policy --function-name ${{ env.LAMBDA__FUNCTION_NAME }} | grep -q ${{ env.EVENT_BRIDGE__LAMBDA_PERMISSION_ID }}; then
-            aws lambda remove-permission \
-              --function-name ${{ env.LAMBDA__FUNCTION_NAME }} \
-              --statement-id ${{ env.EVENT_BRIDGE__LAMBDA_PERMISSION_ID }}
-          fi
-
-          # Lambda 呼び出し権限を追加
+          # Lambda 呼び出し権限を追加（初回のみで十分）
           aws lambda add-permission \
             --function-name ${{ env.LAMBDA__FUNCTION_NAME }} \
             --statement-id ${{ env.EVENT_BRIDGE__LAMBDA_PERMISSION_ID }} \
             --action "lambda:InvokeFunction" \
             --principal events.amazonaws.com \
             --source-arn "arn:aws:events:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:rule/${{ env.EVENT_BRIDGE__EVENT_RULE_NAME }}"
-
