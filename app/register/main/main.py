@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import asdict
 import json
 import logging  # Import json for Lambda response
 
@@ -26,6 +27,8 @@ logger.setLevel(logging.INFO)
 async def run(event, context):
 
     register_event = RegisterLambdaEvent(**event)
+    
+    logger.info(asdict(register_event))
 
     session = CreateAwsSession(event=register_event).execute()
 
