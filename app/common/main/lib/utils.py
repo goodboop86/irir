@@ -1,6 +1,9 @@
 import inspect
 import logging
 from functools import wraps
+import traceback
+
+from aiohttp import ClientError
 
 # ログ設定
 logging.basicConfig(
@@ -136,9 +139,19 @@ class Utils:
                 try:
                     result = func(*args, **kwargs)
                     return result
-                except Exception as e:
+                except ClientError as e:
+                    error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                    error_msg = e.response.get("Error", {}).get("Message", str(e))
                     Utils.logger.error(
-                        f"Method '{class_name}.{method_name}' failed with error: {e}"
+                        f"Method '{class_name}.{method_name}' failed with AWS ClientError: "
+                        f"[{error_code}] {error_msg}"
+                    )
+                    raise
+                except Exception as e:
+                    # その他の例外はトレース込みでまとめて出す
+                    Utils.logger.error(
+                        f"Method '{class_name}.{method_name}' failed with error: {e}",
+                        exc_info=True
                     )
                     raise
 

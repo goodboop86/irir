@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 
 from common.main.lib.utils import Utils
-from db.main.model.edinet.edinet_enums import DisclosureStatus, RegalStatus
+from register.main.model.edinet.edinet_enums import DisclosureStatus, RegalStatus
 
 
 @dataclass
