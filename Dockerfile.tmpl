@@ -38,4 +38,4 @@ COPY ./app ${LAMBDA_TASK_ROOT}/app
 # Set the AWS Lambda handler.
 WORKDIR ${LAMBDA_TASK_ROOT}/app
 ENV PYTHONPATH=./
-CMD ["${SERVICE_NAME}.main.main.lambda_handler"]
+CMD ["${SERVICE__NAME}.main.main.lambda_handler"]
