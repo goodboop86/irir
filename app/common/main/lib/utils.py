@@ -140,7 +140,6 @@ class Utils:
                     result = func(*args, **kwargs)
                     return result
                 except ClientError as e:
-                    # AWS の ClientError を詳細ログ出し
                     error_code = e.response.get("Error", {}).get("Code", "Unknown")
                     error_msg = e.response.get("Error", {}).get("Message", str(e))
                     Utils.logger.error(
@@ -149,10 +148,10 @@ class Utils:
                     )
                     raise
                 except Exception as e:
-                    # その他のエラー
+                    # その他の例外はトレース込みでまとめて出す
                     Utils.logger.error(
-                        f"Method '{class_name}.{method_name}' failed with error: {e}\n"
-                        f"{traceback.format_exc()}"
+                        f"Method '{class_name}.{method_name}' failed with error: {e}",
+                        exc_info=True
                     )
                     raise
 
