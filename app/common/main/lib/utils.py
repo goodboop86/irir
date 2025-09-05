@@ -3,6 +3,8 @@ import logging
 from functools import wraps
 import traceback
 
+from aiohttp import ClientError
+
 # ログ設定
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
