@@ -63,7 +63,7 @@ IRIRは、金融庁のEDINET（Electronic Disclosure for Investors' NETwork）AP
 ```bash
 # db(lambda)
 cd app/
-PYTHONPATH="./" uv run db/main/main.py
+PYTHONPATH="./" uv run register/main/main.py
 
 # フロントエンドアプリケーションの起動
 uv run streamlit run app/frontend/main.py

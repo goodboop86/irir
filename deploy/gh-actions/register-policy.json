@@ -1,0 +1,28 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:${SECRET_MANAGER__EDINET_API_KEY}"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": "arn:aws:s3:::${S3__BUCKET_NAME}/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:PutItem"
+            ],
+            "Resource": "arn:aws:dynamodb:${AWS_REGION}::${AWS_ACCOUNT_ID}:table/${DYNAMODB__TABLE_NAME}"
+        }
+    ]
+}
